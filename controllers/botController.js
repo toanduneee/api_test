@@ -1,6 +1,7 @@
 const { Telegraf } = require('telegraf');
 const videoController = require('./videoController');
 const stockController = require('./stockController');
+const audioController = require('./audioController');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
@@ -107,6 +108,37 @@ bot.on('message', async (ctx) => {
         lastDebugStatus = `Error reacting: ${err.message}`;
     }
 });
+
+// 1. Lắng nghe khi có người dùng gửi VIDEO hoặc VIDEO NOTE (tròn) vào phòng chat
+bot.on(['video', 'video_note'], async (ctx) => {
+    try {
+        // Lấy file_id của video (hỗ trợ cả video thường và video hình tròn)
+        const video = ctx.message.video || ctx.message.video_note;
+        const fileId = video.file_id;
+
+        // Tạo nút bấm Inline dưới tin nhắn
+        await ctx.reply('🎬 Tôi phát hiện một video. Bạn có muốn trích xuất nhạc từ video này không?', {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { 
+                            text: '🎵 Chuyển qua MP3', 
+                            callback_data: `mp3_${fileId}` // Gửi kèm file_id để xử lý ở bước sau
+                        }
+                    ]
+                ]
+            },
+            reply_parameters: {
+                message_id: ctx.message.message_id
+            }
+        });
+    } catch (err) {
+        console.error('Lỗi khi xử lý video gửi lên:', err.message);
+    }
+});
+
+// 2. Lắng nghe sự kiện khi người dùng click vào nút "Chuyển qua MP3"
+bot.action(/^mp3_/, audioController.handleMp3Conversion);
 
 // Hàm xử lý webhook Express nhận dữ liệu từ Telegram
 exports.handleTelegramWebhook = async (req, res) => {
