@@ -155,9 +155,3 @@ exports.handleTelegramWebhook = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 };
-
-// Thêm dòng này ở cuối cùng file code của bạn
-module.exports = {
-    bot,
-    handleTelegramWebhook
-};
