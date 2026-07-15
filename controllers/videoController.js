@@ -43,6 +43,13 @@ async function handleTiktokDownloadAndSend(tiktokUrl, chatId, ctx) {
 
         const videoBuffer = Buffer.from(videoResponse.data);
 
+        // // Chuẩn hóa tiêu đề TikTok: Ép kiểu chuỗi và lọc bỏ các ký tự HTML nguy hiểm tránh lỗi parse
+        // const rawTitle = resData.data.title || "TikTok Video";
+        // const safeTitle = rawTitle
+        //     .replace(/&/g, "&amp;")
+        //     .replace(/</g, "&lt;")
+        //     .replace(/>/g, "&gt;");
+
         // Đẩy file nhị phân sang Telegram
         const formData = new FormData();
         formData.append('chat_id', chatId);
@@ -50,10 +57,12 @@ async function handleTiktokDownloadAndSend(tiktokUrl, chatId, ctx) {
             filename: 'video.mp4',
             contentType: 'video/mp4'
         });
-        formData.append('caption', `🎬 *${resData.data.title || "TikTok Video"}*\n\n🔗 Link gốc: ${tiktokUrl}`);
-        formData.append('parse_mode', 'Markdown'); // Đảm bảo định dạng Markdown cho caption chạy được dấu sao in đậm
+        
+        // // Sử dụng thẻ HTML <b> thay cho dấu * của Markdown
+        // formData.append('caption', `🎬 <b>${safeTitle}</b>\n\n🔗 Link gốc: ${tiktokUrl}`);
+        // formData.append('parse_mode', 'HTML'); 
 
-        // ĐỊNH NGHĨA NÚT BẤM DƯỚI VIDEO (Phải ép kiểu về JSON string)
+        // Định nghĩa nút bấm chuẩn, chuyển thành chuỗi JSON thô
         const replyMarkup = {
             inline_keyboard: [
                 [
