@@ -107,49 +107,56 @@ bot.action('convert_mp3_no', async (ctx) => {
 
 // 3. Lắng nghe khi người dùng bấm nút "Có"
 // 3. Lắng nghe khi người dùng bấm nút "Có"
+// 3. Lắng nghe khi người dùng bấm nút "Có" (hoặc nút Chuyển qua MP3 dưới video TikTok)
 bot.action('convert_mp3_yes', async (ctx) => {
     try {
-        // Lấy tin nhắn gốc mà bot đã reply vào
-        const originalMessage = ctx.callbackQuery.message.reply_to_message;
+        // Tin nhắn chứa nút bấm hiện tại (nơi người dùng click)
+        const currentMessage = ctx.callbackQuery.message;
+        // Tin nhắn được reply (nếu có, đối với trường hợp bot hỏi Có/Không ở video thường)
+        const repliedMessage = currentMessage.reply_to_message;
         
-        if (!originalMessage) {
-            return await ctx.answerCbQuery('❌ Không tìm thấy video gốc. Có thể bạn đã xóa video trước đó.', { show_alert: true });
+        // Ưu tiên tìm video trực tiếp ở tin nhắn hiện tại trước (áp dụng cho video TikTok gửi kèm nút)
+        // Nếu không có mới tìm ở tin nhắn được reply (áp dụng cho video thường người dùng gửi lên)
+        const targetMessage = (currentMessage.video || currentMessage.video_note || currentMessage.document) 
+            ? currentMessage 
+            : repliedMessage;
+
+        if (!targetMessage) {
+            return await ctx.answerCbQuery('❌ Không tìm thấy video gốc để xử lý.', { show_alert: true });
         }
 
         let fileId = null;
 
-        // Trường hợp 1: Tin nhắn gốc chứa video thường
-        if (originalMessage.video) {
-            fileId = originalMessage.video.file_id;
-        } 
-        // Trường hợp 2: Tin nhắn gốc là video hình tròn (video_note)
-        else if (originalMessage.video_note) {
-            fileId = originalMessage.video_note.file_id;
-        } 
-        // Trường hợp 3: Tin nhắn gốc là ảnh động (animation/gif)
-        else if (originalMessage.animation) {
-            fileId = originalMessage.animation.file_id;
-        }
-        // Trường hợp 4: Gửi dưới dạng tài liệu (document) nhưng là file video
-        else if (originalMessage.document && originalMessage.document.mime_type?.startsWith('video/')) {
-            fileId = originalMessage.document.file_id;
+        if (targetMessage.video) {
+            fileId = targetMessage.video.file_id;
+        } else if (targetMessage.video_note) {
+            fileId = targetMessage.video_note.file_id;
+        } else if (targetMessage.animation) {
+            fileId = targetMessage.animation.file_id;
+        } else if (targetMessage.document && targetMessage.document.mime_type?.startsWith('video/')) {
+            fileId = targetMessage.document.file_id;
         }
 
-        // Nếu không bóc tách được bất kỳ file_id video nào
         if (!fileId) {
-            return await ctx.answerCbQuery('❌ Không tìm thấy video hợp lệ trong tin nhắn gốc.', { show_alert: true });
+            return await ctx.answerCbQuery('❌ Không tìm thấy video hợp lệ để chuyển đổi.', { show_alert: true });
         }
 
-        // Báo cho Telegram biết ta nhận được tương tác thành công
         await ctx.answerCbQuery('🔄 Đang khởi tạo tiến trình trích xuất...');
+        
+        // Nếu đây là tin nhắn hỏi "Có/Không" (không phải tin nhắn chứa video trực tiếp), ta xóa nó đi cho sạch
+        if (targetMessage !== currentMessage) {
+            try {
+                await ctx.deleteMessage();
+            } catch (e) {
+                console.warn("Không xóa được tin nhắn câu hỏi:", e.message);
+            }
+        }
 
-        // Giả lập callback_data chứa file_id thật để chuyển tiếp cho audioController xử lý
-        ctx.callbackQuery.data = `mp3_${fileId}`;
+        // Gọi trực tiếp audioController để xử lý convert
+        await audioController.processAndSendMp3(ctx, fileId);
 
-        // Gọi audioController xử lý tải, convert và gửi file
-        await audioController.handleMp3Conversion(ctx);
     } catch (err) {
-        console.error('Lỗi chi tiết khi xử lý nút Có:', err.message);
+        console.error('Lỗi khi xử lý nút Có/Chuyển MP3:', err.message);
         await ctx.answerCbQuery('❌ Có lỗi xảy ra trong quá trình bóc tách video.', { show_alert: true });
     }
 });
