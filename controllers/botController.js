@@ -45,9 +45,9 @@ bot.command('getid', async (ctx) => {
         const userId = ctx.from.id;          // ID của người dùng gõ lệnh
         const chatId = ctx.chat.id;          // ID của phòng chat hiện tại (cá nhân hoặc nhóm)
         const chatType = ctx.chat.type;      // Loại phòng chat (private, group, supergroup)
-        
+
         // Lấy Thread ID (nếu nhóm có bật tính năng chia Topic)
-        const threadId = ctx.message.message_thread_id; 
+        const threadId = ctx.message.message_thread_id;
 
         let responseText = `👤 <b>ID của bạn:</b> <code>${userId}</code>\n`;
         responseText += `💬 <b>ID Cuộc trò chuyện:</b> <code>${chatId}</code> (<i>${chatType}</i>)\n`;
@@ -67,6 +67,41 @@ bot.command('getid', async (ctx) => {
         console.error('Loi lay ID: ', err.message);
     }
 });
+
+// 1. Lắng nghe khi có người dùng gửi VIDEO hoặc VIDEO NOTE (tròn) vào phòng chat
+bot.on(['video', 'video_note', 'document'], async (ctx) => {
+    try {
+        // Lấy file_id của video (hỗ trợ cả video thường và video hình tròn)
+        const isVideoDoc = ctx.message.document && ctx.message.document.mime_type?.startsWith('video/');
+        const video = ctx.message.video || ctx.message.video_note || (isVideoDoc ? ctx.message.document : null);
+
+        if (!video) return;
+        const fileId = video.file_id;
+
+        // Tạo nút bấm Inline dưới tin nhắn
+        await ctx.reply('🎬 Tôi phát hiện một video. Bạn có muốn trích xuất nhạc từ video này không?', {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: '🎵 Chuyển qua MP3',
+                            callback_data: `mp3_${fileId}` // Gửi kèm file_id để xử lý ở bước sau
+                        }
+                    ]
+                ]
+            },
+            reply_parameters: {
+                message_id: ctx.message.message_id
+            }
+        });
+    } catch (err) {
+        console.error('Lỗi khi xử lý video gửi lên:', err.message);
+    }
+});
+
+// 2. Lắng nghe sự kiện khi người dùng click vào nút "Chuyển qua MP3"
+bot.action(/^mp3_/, audioController.handleMp3Conversion);
+
 // Bắt sự kiện tin nhắn thường
 bot.on('message', async (ctx) => {
     try {
@@ -83,7 +118,7 @@ bot.on('message', async (ctx) => {
                 lastDebugStatus = "Phát hiện link TikTok gửi từ người dùng";
                 const urlRegex = /(https?:\/\/[^\s]+tiktok\.com[^\s]*)/gi;
                 const match = messageText.match(urlRegex);
-                
+
                 if (match) {
                     await videoController.handleTiktokDownloadAndSend(match[0], ctx.chat.id, ctx);
                     return;
@@ -109,37 +144,6 @@ bot.on('message', async (ctx) => {
     }
 });
 
-// 1. Lắng nghe khi có người dùng gửi VIDEO hoặc VIDEO NOTE (tròn) vào phòng chat
-bot.on(['video', 'video_note'], async (ctx) => {
-    try {
-        // Lấy file_id của video (hỗ trợ cả video thường và video hình tròn)
-        const video = ctx.message.video || ctx.message.video_note;
-        const fileId = video.file_id;
-
-        // Tạo nút bấm Inline dưới tin nhắn
-        await ctx.reply('🎬 Tôi phát hiện một video. Bạn có muốn trích xuất nhạc từ video này không?', {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { 
-                            text: '🎵 Chuyển qua MP3', 
-                            callback_data: `mp3_${fileId}` // Gửi kèm file_id để xử lý ở bước sau
-                        }
-                    ]
-                ]
-            },
-            reply_parameters: {
-                message_id: ctx.message.message_id
-            }
-        });
-    } catch (err) {
-        console.error('Lỗi khi xử lý video gửi lên:', err.message);
-    }
-});
-
-// 2. Lắng nghe sự kiện khi người dùng click vào nút "Chuyển qua MP3"
-bot.action(/^mp3_/, audioController.handleMp3Conversion);
-
 // Hàm xử lý webhook Express nhận dữ liệu từ Telegram
 exports.handleTelegramWebhook = async (req, res) => {
     try {
@@ -150,4 +154,10 @@ exports.handleTelegramWebhook = async (req, res) => {
         console.error('Webhook error:', error);
         return res.status(500).json({ error: error.message });
     }
+};
+
+// Thêm dòng này ở cuối cùng file code của bạn
+module.exports = {
+    bot,
+    handleTelegramWebhook
 };
