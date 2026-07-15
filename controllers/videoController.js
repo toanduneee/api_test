@@ -51,6 +51,20 @@ async function handleTiktokDownloadAndSend(tiktokUrl, chatId, ctx) {
             contentType: 'video/mp4'
         });
         formData.append('caption', `🎬 *${resData.data.title || "TikTok Video"}*\n\n🔗 Link gốc: ${tiktokUrl}`);
+        formData.append('parse_mode', 'Markdown'); // Đảm bảo định dạng Markdown cho caption chạy được dấu sao in đậm
+
+        // ĐỊNH NGHĨA NÚT BẤM DƯỚI VIDEO (Phải ép kiểu về JSON string)
+        const replyMarkup = {
+            inline_keyboard: [
+                [
+                    {
+                        text: '🎵 Chuyển qua MP3',
+                        callback_data: 'convert_mp3_yes'
+                    }
+                ]
+            ]
+        };
+        formData.append('reply_markup', JSON.stringify(replyMarkup));
 
         await axios.post(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo`,
