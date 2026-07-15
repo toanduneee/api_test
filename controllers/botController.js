@@ -106,31 +106,51 @@ bot.action('convert_mp3_no', async (ctx) => {
 });
 
 // 3. Lắng nghe khi người dùng bấm nút "Có"
+// 3. Lắng nghe khi người dùng bấm nút "Có"
 bot.action('convert_mp3_yes', async (ctx) => {
     try {
-        // Lấy tin nhắn gốc mà bot đã reply vào (chính là tin nhắn chứa video của người dùng)
+        // Lấy tin nhắn gốc mà bot đã reply vào
         const originalMessage = ctx.callbackQuery.message.reply_to_message;
         
         if (!originalMessage) {
             return await ctx.answerCbQuery('❌ Không tìm thấy video gốc. Có thể bạn đã xóa video trước đó.', { show_alert: true });
         }
 
-        // Bóc tách video từ tin nhắn gốc
-        const isVideoDoc = originalMessage.document && originalMessage.document.mime_type?.startsWith('video/');
-        const video = originalMessage.video || originalMessage.video_note || (isVideoDoc ? originalMessage.document : null);
+        let fileId = null;
 
-        if (!video) {
-            return await ctx.answerCbQuery('❌ Tin nhắn gốc không chứa video hợp lệ.', { show_alert: true });
+        // Trường hợp 1: Tin nhắn gốc chứa video thường
+        if (originalMessage.video) {
+            fileId = originalMessage.video.file_id;
+        } 
+        // Trường hợp 2: Tin nhắn gốc là video hình tròn (video_note)
+        else if (originalMessage.video_note) {
+            fileId = originalMessage.video_note.file_id;
+        } 
+        // Trường hợp 3: Tin nhắn gốc là ảnh động (animation/gif)
+        else if (originalMessage.animation) {
+            fileId = originalMessage.animation.file_id;
+        }
+        // Trường hợp 4: Gửi dưới dạng tài liệu (document) nhưng là file video
+        else if (originalMessage.document && originalMessage.document.mime_type?.startsWith('video/')) {
+            fileId = originalMessage.document.file_id;
         }
 
-        // Tái cấu trúc lại callback_data giống định dạng cũ để audioController của bạn chạy tiếp
-        ctx.callbackQuery.data = `mp3_${video.file_id}`;
+        // Nếu không bóc tách được bất kỳ file_id video nào
+        if (!fileId) {
+            return await ctx.answerCbQuery('❌ Không tìm thấy video hợp lệ trong tin nhắn gốc.', { show_alert: true });
+        }
 
-        // Gọi audioController xử lý convert và gửi file
+        // Báo cho Telegram biết ta nhận được tương tác thành công
+        await ctx.answerCbQuery('🔄 Đang khởi tạo tiến trình trích xuất...');
+
+        // Giả lập callback_data chứa file_id thật để chuyển tiếp cho audioController xử lý
+        ctx.callbackQuery.data = `mp3_${fileId}`;
+
+        // Gọi audioController xử lý tải, convert và gửi file
         await audioController.handleMp3Conversion(ctx);
     } catch (err) {
-        console.error('Lỗi khi xử lý nút Có:', err.message);
-        await ctx.answerCbQuery('❌ Có lỗi xảy ra trong quá trình xử lý.', { show_alert: true });
+        console.error('Lỗi chi tiết khi xử lý nút Có:', err.message);
+        await ctx.answerCbQuery('❌ Có lỗi xảy ra trong quá trình bóc tách video.', { show_alert: true });
     }
 });
 
