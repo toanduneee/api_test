@@ -37,6 +37,15 @@ function convertVideoToMp3(inputPath, outputPath) {
 
 // 1. Hàm chính: Nhận trực tiếp fileId từ tham số truyền vào
 async function processAndSendMp3(ctx, fileId) {
+    // Trả lời Telegram ngay lập tức nếu yêu cầu đến từ nút bấm (Callback Query)
+    if (ctx.callbackQuery) {
+        try {
+            await ctx.answerCbQuery('🔄 Đang khởi tạo tiến trình trích xuất...');
+        } catch (e) {
+            console.warn('Không thể trả lời callback query (có thể đã được trả lời trước đó):', e.message);
+        }
+    }
+
     // Báo cho người dùng biết bot đang xử lý
     const processingMsg = await ctx.reply('⏳ Đang tải video và tách nhạc, chờ một chút nhé...');
 
@@ -54,9 +63,9 @@ async function processAndSendMp3(ctx, fileId) {
         await convertVideoToMp3(inputPath, outputPath);
 
         // 3. Gửi file MP3 lại cho người dùng
-        const originalMsgId = ctx.callbackQuery.message.reply_to_message?.message_id || ctx.callbackQuery.message.message_id;
+        const originalMsgId = ctx.callbackQuery?.message?.reply_to_message?.message_id || ctx.callbackQuery?.message?.message_id || ctx.message?.message_id;
         await ctx.replyWithAudio({ source: outputPath }, {
-            caption: '🎵 Nhạc MP3 của bạn đã sẵn sàng!',
+            caption: '🎵 MP3 của bạn đã sẵn sàng!',
             reply_parameters: { message_id: originalMsgId }
         });
 
@@ -80,7 +89,6 @@ async function processAndSendMp3(ctx, fileId) {
 // 2. Hàm phụ: Giữ nguyên để tương thích nếu chỗ nào đó vẫn gọi theo kiểu cũ
 async function handleMp3Conversion(ctx) {
     try {
-        await ctx.answerCbQuery('🔄 Đang xử lý chuyển đổi sang MP3...');
         const fileId = ctx.callbackQuery.data.split('_')[1];
         await processAndSendMp3(ctx, fileId);
     } catch (err) {
