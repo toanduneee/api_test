@@ -41,17 +41,31 @@ bot.command('stock', stockController.checkStockCommand);
 
 bot.command('getid', async (ctx) => {
     try {
-        const id = ctx.from.id;
-        await ctx.replyWithMarkdownV2(`ID\: ${id}`, {
+        const userId = ctx.from.id;          // ID của người dùng gõ lệnh
+        const chatId = ctx.chat.id;          // ID của phòng chat hiện tại (cá nhân hoặc nhóm)
+        const chatType = ctx.chat.type;      // Loại phòng chat (private, group, supergroup)
+        
+        // Lấy Thread ID (nếu nhóm có bật tính năng chia Topic)
+        const threadId = ctx.message.message_thread_id; 
+
+        let responseText = `👤 <b>ID của bạn:</b> <code>${userId}</code>\n`;
+        responseText += `💬 <b>ID Cuộc trò chuyện:</b> <code>${chatId}</code> (<i>${chatType}</i>)\n`;
+
+        // Nếu lệnh được gõ trong một Topic của nhóm (Thread)
+        if (threadId) {
+            responseText += `🧵 <b>ID Topic (Thread):</b> <code>${threadId}</code>\n`;
+        }
+
+        await ctx.reply(responseText, {
+            parse_mode: 'HTML',
             reply_parameters: {
                 message_id: ctx.message.message_id
             }
         });
     } catch (err) {
-        console.error('Loi cai gi do ko biec: ', err.message);
+        console.error('Loi lay ID: ', err.message);
     }
-})
-
+});
 // Bắt sự kiện tin nhắn thường
 bot.on('message', async (ctx) => {
     try {
