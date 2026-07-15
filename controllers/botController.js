@@ -68,25 +68,21 @@ bot.command('getid', async (ctx) => {
     }
 });
 
-// 1. Lắng nghe khi có người dùng gửi VIDEO hoặc VIDEO NOTE (tròn) vào phòng chat
+// 1. Lắng nghe khi có người dùng gửi VIDEO hoặc VIDEO NOTE (tròn)
 bot.on(['video', 'video_note', 'document'], async (ctx) => {
     try {
-        // Lấy file_id của video (hỗ trợ cả video thường và video hình tròn)
         const isVideoDoc = ctx.message.document && ctx.message.document.mime_type?.startsWith('video/');
         const video = ctx.message.video || ctx.message.video_note || (isVideoDoc ? ctx.message.document : null);
 
-        if (!video) return;
-        const fileId = video.file_id;
+        if (!video) return; // Không phải video thì bỏ qua
 
-        // Tạo nút bấm Inline dưới tin nhắn
+        // Gửi câu hỏi kèm 2 nút bấm Có / Không, reply trực tiếp vào video đó
         await ctx.reply('🎬 Tôi phát hiện một video. Bạn có muốn trích xuất nhạc từ video này không?', {
             reply_markup: {
                 inline_keyboard: [
                     [
-                        {
-                            text: '🎵 Chuyển qua MP3',
-                            callback_data: `mp3_${fileId}` // Gửi kèm file_id để xử lý ở bước sau
-                        }
+                        { text: '🟢 Có', callback_data: 'convert_mp3_yes' },
+                        { text: '🔴 Không', callback_data: 'convert_mp3_no' }
                     ]
                 ]
             },
@@ -95,12 +91,48 @@ bot.on(['video', 'video_note', 'document'], async (ctx) => {
             }
         });
     } catch (err) {
-        console.error('Lỗi khi xử lý video gửi lên:', err.message);
+        console.error('Lỗi khi hiển thị nút bấm Có/Không:', err.message);
     }
 });
 
-// 2. Lắng nghe sự kiện khi người dùng click vào nút "Chuyển qua MP3"
-bot.action(/^mp3_/, audioController.handleMp3Conversion);
+// 2. Lắng nghe khi người dùng bấm nút "Không"
+bot.action('convert_mp3_no', async (ctx) => {
+    try {
+        await ctx.answerCbQuery('Đã hủy bỏ yêu cầu.');
+        await ctx.deleteMessage(); // Xóa tin nhắn câu hỏi của bot đi cho sạch nhóm
+    } catch (err) {
+        console.error('Lỗi khi hủy:', err.message);
+    }
+});
+
+// 3. Lắng nghe khi người dùng bấm nút "Có"
+bot.action('convert_mp3_yes', async (ctx) => {
+    try {
+        // Lấy tin nhắn gốc mà bot đã reply vào (chính là tin nhắn chứa video của người dùng)
+        const originalMessage = ctx.callbackQuery.message.reply_to_message;
+        
+        if (!originalMessage) {
+            return await ctx.answerCbQuery('❌ Không tìm thấy video gốc. Có thể bạn đã xóa video trước đó.', { show_alert: true });
+        }
+
+        // Bóc tách video từ tin nhắn gốc
+        const isVideoDoc = originalMessage.document && originalMessage.document.mime_type?.startsWith('video/');
+        const video = originalMessage.video || originalMessage.video_note || (isVideoDoc ? originalMessage.document : null);
+
+        if (!video) {
+            return await ctx.answerCbQuery('❌ Tin nhắn gốc không chứa video hợp lệ.', { show_alert: true });
+        }
+
+        // Tái cấu trúc lại callback_data giống định dạng cũ để audioController của bạn chạy tiếp
+        ctx.callbackQuery.data = `mp3_${video.file_id}`;
+
+        // Gọi audioController xử lý convert và gửi file
+        await audioController.handleMp3Conversion(ctx);
+    } catch (err) {
+        console.error('Lỗi khi xử lý nút Có:', err.message);
+        await ctx.answerCbQuery('❌ Có lỗi xảy ra trong quá trình xử lý.', { show_alert: true });
+    }
+});
 
 // Bắt sự kiện tin nhắn thường
 bot.on('message', async (ctx) => {
