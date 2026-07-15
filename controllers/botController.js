@@ -1,5 +1,6 @@
 const { Telegraf } = require('telegraf');
 const videoController = require('./videoController');
+const stockController = require('./stockController');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
@@ -35,6 +36,21 @@ bot.command('hello', async (ctx) => {
         lastDebugStatus = `Error in hello command: ${err.message}`;
     }
 });
+
+bot.command('stock', stockController.checkStockCommand);
+
+bot.command('getid', async (ctx) => {
+    try {
+        const id = ctx.from.id;
+        await ctx.replyWithMarkdownV2(`ID\: ${id}`, {
+            reply_parameters: {
+                message_id: ctx.message.message_id
+            }
+        });
+    } catch (err) {
+        console.error('Loi cai gi do ko biec: ', err.message);
+    }
+})
 
 // Bắt sự kiện tin nhắn thường
 bot.on('message', async (ctx) => {
