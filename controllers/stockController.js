@@ -1,41 +1,48 @@
 const axios = require('axios');
 
-// API 1: Lấy giá hiện tại từ Cafef (siêu ổn định)
-async function getCafefPrice(symbol) {
+// Hàm lấy dữ liệu cổ phiếu từ API mới của Cafef
+async function getCafefNewPrice(symbol) {
     try {
-        const response = await axios.get(`https://e.cafef.vn/info.ashx?ticket=${symbol.toUpperCase()}`, { timeout: 5000 });
-        if (response.data && response.data.Symbol) {
-            return {
-                price: response.data.Price,
-                change: response.data.Change || 0,
-                percent: response.data.PercentChange || 0,
-                name: response.data.Name || "Cổ phiếu"
-            };
-        }
-        return null;
-    } catch (err) {
-        console.error(`[Cafef] Lỗi lấy giá mã ${symbol}:`, err.message);
-        return null;
-    }
-}
+        const response = await axios.get(`https://msh-appdata.cafef.vn/rest-api/api/v1/Watchlists/${symbol.toUpperCase()}/price`, {
+            timeout: 5000,
+            headers: {
+                "accept": "*/*",
+                "accept-language": "vi,en-US;q=0.9,en;q=0.8",
+                "priority": "u=1, i",
+                "sec-ch-ua-mobile": "?1",
+                "sec-ch-ua-platform": '"Android"',
+                "sec-fetch-dest": "empty",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-site",
+                "Referer": "https://mshdev-iframe.cafef.vn/",
+                "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+            }
+        });
 
-// API 2: Lấy dữ liệu khối ngoại từ VNDirect
-async function getVNDirectForeign(symbol) {
-    try {
-        const response = await axios.get(`https://api-finfo.vndirect.com.vn/v4/foreigns/latest?order=tradingDate&filter=code:${symbol.toUpperCase()}`, { timeout: 5000 });
-        if (response.data && response.data.data && response.data.data.length > 0) {
-            const fData = response.data.data[0];
-            // Đổi giá trị ròng từ Đồng sang Tỷ Đồng cho dễ nhìn
-            const netValBillion = fData.netVal ? (fData.netVal / 1000000000).toFixed(2) : 0;
+        if (response.data && response.data.succeeded && response.data.data?.value) {
+            const raw = response.data.data.value;
+            
+            const price = raw.price || 0;
+            const refPrice = raw.refPrice || 0;
+            const change = parseFloat((price - refPrice).toFixed(2));
+            const percent = refPrice > 0 ? parseFloat(((change / refPrice) * 100).toFixed(2)) : 0;
+            
+            // Tính toán khối ngoại ròng (đơn vị: Tỷ VNĐ)
+            const foreignBuyVal = raw.foreignBuyValue || 0;
+            const foreignSellVal = raw.foreignSellValue || 0;
+            const netValBillion = parseFloat(((foreignBuyVal - foreignSellVal) / 1000000000).toFixed(2));
+
             return {
-                netVal: parseFloat(netValBillion),
-                buyVol: fData.buyVol || 0,
-                sellVol: fData.sellVol || 0
+                symbol: raw.symbol,
+                price: price,
+                change: change,
+                percent: percent,
+                netVal: netValBillion
             };
         }
         return null;
     } catch (err) {
-        console.error(`[VND] Lỗi lấy khối ngoại mã ${symbol}:`, err.message);
+        console.error(`[Cafef New API] Lỗi lấy dữ liệu mã ${symbol}:`, err.message);
         return null;
     }
 }
@@ -47,33 +54,25 @@ exports.checkStockCommand = async (ctx) => {
         const args = text.split(/\s+/).slice(1);
         const symbol = args[0] || 'TCB';
 
-        await ctx.reply(`🔍 Đang quét dữ liệu mã ${symbol.toUpperCase()}...`);
+        await ctx.reply(`🔍 Đang quét dữ liệu mã ${symbol.toUpperCase()} từ API Cafef App...`);
         
-        const [priceData, foreignData] = await Promise.all([
-            getCafefPrice(symbol),
-            getVNDirectForeign(symbol)
-        ]);
+        const data = await getCafefNewPrice(symbol);
 
-        if (!priceData) {
-            return await ctx.reply('❌ Không lấy được thông tin giá cổ phiếu lúc này.');
+        if (!data) {
+            return await ctx.reply('❌ Không lấy được thông tin cổ phiếu lúc này (API Cafef lỗi hoặc bị chặn).');
         }
 
-        const statusEmoji = priceData.change > 0 ? '🟢' : (priceData.change < 0 ? '🔴' : '🟡');
-        let foreignText = "⚠️ Chưa có dữ liệu khối ngoại hôm nay.";
-        
-        if (foreignData) {
-            const foreignEmoji = foreignData.netVal > 0 ? '🔵 (Khối ngoại MUA RÒNG)' : (foreignData.netVal < 0 ? '🟠 (Khối ngoại BÁN RÒNG)' : '⚪ (Cân bằng)');
-            foreignText = `${foreignEmoji}: \`${foreignData.netVal > 0 ? '+' : ''}${foreignData.netVal}\` tỷ VNĐ`;
-        }
+        const statusEmoji = data.change > 0 ? '🟢' : (data.change < 0 ? '🔴' : '🟡');
+        const foreignEmoji = data.netVal > 0 ? '🔵 (Khối ngoại MUA RÒNG)' : (data.netVal < 0 ? '🟠 (Khối ngoại BÁN RÒNG)' : '⚪ (Cân bằng)');
+        const foreignText = `${foreignEmoji}: <code>${data.netVal > 0 ? '+' : ''}${data.netVal}</code> tỷ VNĐ`;
 
         await ctx.reply(
-            `📊 *CẬP NHẬT CỔ PHIẾU: ${symbol.toUpperCase()}*\n` +
-            `🏢 _${priceData.name}_\n\n` +
-            `💰 *Giá hiện tại:* \`${priceData.price}\`\n` +
-            `${statusEmoji} *Biến động:* \`${priceData.change > 0 ? '+' : ''}${priceData.change}\` (${priceData.percent}%)\n` +
-            `🌐 *Giao dịch khối ngoại:* \n ${foreignText}\n\n` +
-            `_Cập nhật tự động từ hệ thống_`,
-            { parse_mode: 'Markdown' }
+            `📊 <b>CẬP NHẬT CỔ PHIẾU: ${data.symbol}</b>\n\n` +
+            `💰 <b>Giá hiện tại:</b> <code>${data.price}</code>\n` +
+            `${statusEmoji} <b>Biến động:</b> <code>${data.change > 0 ? '+' : ''}${data.change}</code> (${data.percent}%)\n` +
+            `🌐 <b>Giao dịch khối ngoại:</b>\n${foreignText}\n\n` +
+            `<i>Cập nhật tự động từ hệ thống</i>`,
+            { parse_mode: 'HTML' }
         );
     } catch (err) {
         console.error('Lỗi lệnh stock:', err.message);
@@ -89,32 +88,27 @@ exports.sendAutomaticStockAlert = async (symbol, chatId) => {
     }
 
     try {
-        const [priceData, foreignData] = await Promise.all([
-            getCafefPrice(symbol),
-            getVNDirectForeign(symbol)
-        ]);
+        const data = await getCafefNewPrice(symbol);
 
-        if (priceData) {
-            const statusEmoji = priceData.change > 0 ? '🟢' : (priceData.change < 0 ? '🔴' : '🟡');
-            let foreignText = "⚠️ Chưa có dữ liệu khối ngoại.";
-            
-            if (foreignData) {
-                const foreignEmoji = foreignData.netVal > 0 ? '🔵 Mua ròng' : (foreignData.netVal < 0 ? '🟠 Bán ròng' : '⚪ Cân bằng');
-                foreignText = `${foreignEmoji}: \`${foreignData.netVal > 0 ? '+' : ''}${foreignData.netVal}\` tỷ`;
-            }
+        if (data) {
+            const statusEmoji = data.change > 0 ? '🟢' : (data.change < 0 ? '🔴' : '🟡');
+            const foreignEmoji = data.netVal > 0 ? '🔵 Mua ròng' : (data.netVal < 0 ? '🟠 Bán ròng' : '⚪ Cân bằng');
+            const foreignText = `${foreignEmoji}: <code>${data.netVal > 0 ? '+' : ''}${data.netVal}</code> tỷ`;
 
-            const message = `🔔 *CẬP NHẬT BIẾN ĐỘNG 5 PHÚT: ${symbol.toUpperCase()}*\n\n` +
-                            `💵 *Giá khớp:* \`${priceData.price}\` (${priceData.change > 0 ? '+' : ''}${priceData.change} | ${priceData.percent}%)\n` +
-                            `🌐 *Khối ngoại:* ${foreignText}`;
+            const message = `🔔 <b>CẬP NHẬT BIẾN ĐỘNG 5 PHÚT: ${data.symbol}</b>\n\n` +
+                            `💵 <b>Giá khớp:</b> <code>${data.price}</code> (${data.change > 0 ? '+' : ''}${data.change} | ${data.percent}%)\n` +
+                            `🌐 <b>Khối ngoại:</b> ${foreignText}`;
 
             await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                 chat_id: chatId,
                 text: message,
-                parse_mode: 'Markdown'
+                parse_mode: 'HTML'
             });
             console.log(`Đã gửi cập nhật 5 phút mã ${symbol} thành công!`);
+        } else {
+            console.log(`[Cafef New API] Không lấy được dữ liệu cho ${symbol} tại lượt này.`);
         }
     } catch (error) {
-        console.error('Lỗi gửi báo cáo tự động:', error.message);
+        console.error('Lỗi gửi báo cáo tự động:', error.response ? error.response.data : error.message);
     }
 };
