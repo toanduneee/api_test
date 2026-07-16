@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trải Bài Lenormand 5 Lá</title>
+    <!-- Nhúng file CSS bên ngoài -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Trải Bài Lenormand 5 Lá</h1>
+        <p class="subtitle">Nhập câu hỏi của bạn bên dưới, sau đó bấm bốc bài để lật mở số mệnh.</p>
+        
+        <div class="input-group">
+            <input type="text" id="user-question" placeholder="Ví dụ: Kỳ thi sắp tới của tôi sẽ thế nào?">
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-draw" id="action-btn" onclick="handleButtonClick()">Bốc bài</button>
+            <button class="btn-copy" id="copy-btn" onclick="copyResults()">Copy kết quả</button>
+        </div>
+
+        <div class="cards-grid" id="cards-container">
+            <!-- 5 khung lá bài sẽ tự động sinh ra tại đây thông qua JS -->
+        </div>
+    </div>
+
+    <!-- Nhúng file JS bên ngoài -->
+    <script src="script.js"></script>
+</body>
+</html>

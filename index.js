@@ -1,10 +1,19 @@
 const express = require('express');
+const path = require('path');
 const apiRoutes = require('./routes/apiRoutes');
 const stockController = require('./controllers/stockController');
 const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 1. Cấu hình để Express có thể đọc các file tĩnh (CSS, JS, Hình ảnh nếu có) trong thư mục public
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 2. Định nghĩa route GET cho trang chủ
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 app.use(express.json());
 
@@ -59,10 +68,6 @@ cron.schedule('*/5 13-15 * * 1-5', () => {
     stockController.sendAutomaticStockAlert('TCB', TARGET_CHAT_ID);
 }, {
     timezone: "Asia/Ho_Chi_Minh" // Ép cron chạy theo múi giờ Việt Nam
-});
-
-app.get('/', (req, res) => {
-    res.status(200).send('test thôi nè');
 });
 
 // Kích hoạt toàn bộ định tuyến cấu hình
