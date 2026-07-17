@@ -44,7 +44,25 @@
         </div>
     </div>
 
+    <div class="actions">
+        <button id="btn-interpret" class="btn-primary">Giải Nghĩa Trải Bài (AI)</button>
+    </div>
+
+    <!-- 3. Khu vực hiển thị kết quả luận giải -->
+    <div id="interpretation-section" class="result-box" style="display: none;">
+        <h3>Kết Quả Luận Giải Từ Chuyên Gia</h3>
+        
+        <!-- Hiệu ứng Loading khi chờ AI phản hồi -->
+        <div id="loading-ai" style="display: none;">
+            <p>Đang kết nối với chuyên gia Lenormand, vui lòng đợi...</p>
+        </div>
+
+        <!-- Nơi chứa nội dung giải nghĩa chính thức -->
+        <div id="interpretation-content"></div>
+    </div>
+
     <!-- Nhúng file JS bên ngoài -->
     <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </body>
 </html>

@@ -175,5 +175,93 @@ function copyResults() {
         });
 }
 
+document.getElementById('btn-interpret').addEventListener('click', async () => {          
+    // 1. Thu thập câu hỏi
+    const questionInput = document.getElementById('user-question') || document.querySelector('input[type="text"]');     
+    const questionText = questionInput ? questionInput.value.trim() : "";          
+    
+    if (!questionText) {         
+        alert("Vui lòng nhập câu hỏi trước khi yêu cầu luận giải trải bài!");         
+        return;     
+    }     
+
+    // SỬA ĐỔI: Lấy trực tiếp mảng bài thực tế mà hàm drawFiveCards() của bạn đã tạo ra
+    const finalCards = currentDraw.cards; 
+
+    if (!finalCards || finalCards.length === 0) {         
+        alert("Vui lòng ấn nút Bốc bài để chọn đủ các lá bài trên trải bài trước!");         
+        return;     
+    }     
+
+    // Gán dữ liệu map với vị trí tương ứng để AI hiểu vị trí của lá bài đó
+    const mappedCards = finalCards.map((card, index) => {
+        return {
+            position: positions[index], // Lấy từ mảng vị trí mẫu ("Quá khứ", "Hiện tại"...) của bạn
+            card_name: card.name,
+            original_meaning: card.meaning
+        };
+    });
+
+    // Đóng gói dữ liệu gửi lên Backend     
+    const spreadData = {         
+        question: questionText,         
+        spread_type: "Trải bài 5 lá theo dòng thời gian",          
+        cards: mappedCards     
+    };     
+
+    // 3. Gọi hàm giải bài
+    await handleInterpret(spreadData);  
+});
+
+/**
+ * Hàm gọi API Backend để lấy lời giải nghĩa từ AI và render lên giao diện
+ * @param {Object} spreadData - Đối tượng dữ liệu trải bài thực tế
+ */
+async function handleInterpret(spreadData) {
+    // Khai báo và lấy các phần tử giao diện hiển thị kết quả
+    const section = document.getElementById('interpretation-section');
+    const loading = document.getElementById('loading-ai');
+    const content = document.getElementById('interpretation-content');
+
+    // Kích hoạt trạng thái chờ trên UI
+    if (section) section.style.display = 'block';
+    if (loading) loading.style.display = 'block';
+    if (content) content.innerHTML = ''; // Xóa sạch kết quả cũ
+
+    try {
+        // Gửi request lên endpoint Backend
+        const response = await fetch('/api/interpret', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ data: spreadData })
+        });
+        
+        const result = await response.json();
+        
+        // Tắt trạng thái chờ loading
+        if (loading) loading.style.display = 'none';
+
+        if (result.success) {
+            // Sử dụng thư viện marked dịch chuỗi Markdown từ Groq API thành HTML
+            if (content) {
+                content.innerHTML = marked.parse(result.output_text);
+            }
+        } else {
+            if (content) {
+                content.innerHTML = `<p style="color: red; font-weight: bold;">Thất bại: ${result.error}</p>`;
+            }
+        }
+    } catch (error) {
+        // Xử lý khi không kết nối được server hoặc server sập
+        if (loading) loading.style.display = 'none';
+        if (content) {
+            content.innerHTML = `<p style="color: red; font-weight: bold;">Lỗi kết nối đến Server hệ thống. Vui lòng kiểm tra lại!</p>`;
+        }
+        console.error("Lỗi kết nối server:", error);
+    }
+}
+
 // Khởi chạy sinh bài sau khi toàn bộ tài nguyên web được tải xong
 window.onload = initCards;
