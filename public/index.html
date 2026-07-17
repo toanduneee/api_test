@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,9 +10,10 @@
     <!-- OPEN GRAPH -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="Bói bài Lenormand 5 Lá - Dự Đoán Tương Lai">
-    <meta property="og:description" content="Nhập câu hỏi của bạn, trải nghiệm bốc 5 lá bài Lenormand với hiệu ứng 3D đẹp mắt và copy kết quả để hỏi AI giải nghĩa ngay!">
+    <meta property="og:description"
+        content="Nhập câu hỏi của bạn, trải nghiệm bốc 5 lá bài Lenormand với hiệu ứng 3D đẹp mắt và copy kết quả để hỏi AI giải nghĩa ngay!">
     <meta property="og:image" content="https://api-test-wkof.onrender.com/banner.png">
-    
+
     <!-- Đường dẫn tuyệt đối đến trang web của bạn -->
     <meta property="og:url" content="https://api-test-wkof.onrender.com/">
     <meta property="og:site_name" content="Lenormand Online">
@@ -25,11 +27,12 @@
     <!-- Nhúng file CSS bên ngoài -->
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="container">
         <h1>Trải Bài Lenormand 5 Lá</h1>
         <p class="subtitle">Nhập câu hỏi của bạn bên dưới, sau đó bấm bốc bài để lật mở số mệnh.</p>
-        
+
         <div class="input-group">
             <input type="text" id="user-question" placeholder="Ví dụ: Kỳ thi sắp tới của tôi sẽ thế nào?">
         </div>
@@ -38,20 +41,23 @@
             <button class="btn-draw" id="action-btn" onclick="handleButtonClick()">Bốc bài</button>
             <button class="btn-copy" id="copy-btn" onclick="copyResults()">Copy kết quả</button>
         </div>
+        <div class="actions">
+            <button id="btn-interpret" class="btn-primary">Giải Nghĩa Trải Bài (AI)</button>
+        </div>
 
         <div class="cards-grid" id="cards-container">
             <!-- 5 khung lá bài sẽ tự động sinh ra tại đây thông qua JS -->
         </div>
     </div>
 
-    <div class="actions">
+    <!-- <div class="actions">
         <button id="btn-interpret" class="btn-primary">Giải Nghĩa Trải Bài (AI)</button>
-    </div>
+    </div> -->
 
     <!-- 3. Khu vực hiển thị kết quả luận giải -->
     <div id="interpretation-section" class="result-box" style="display: none;">
         <h3>Kết Quả Luận Giải Từ Chuyên Gia</h3>
-        
+
         <!-- Hiệu ứng Loading khi chờ AI phản hồi -->
         <div id="loading-ai" style="display: none;">
             <p>Đang kết nối với chuyên gia Lenormand, vui lòng đợi...</p>
@@ -65,4 +71,5 @@
     <script src="script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </body>
+
 </html>

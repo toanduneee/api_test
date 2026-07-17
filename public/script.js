@@ -228,6 +228,10 @@ async function handleInterpret(spreadData) {
     if (loading) loading.style.display = 'block';
     if (content) content.innerHTML = ''; // Xóa sạch kết quả cũ
 
+    if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     try {
         // Gửi request lên endpoint Backend
         const response = await fetch('/api/interpret', {
