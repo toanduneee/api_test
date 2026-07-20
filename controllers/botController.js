@@ -38,21 +38,20 @@ bot.command('hello', async (ctx) => {
     }
 });
 
+// ĐĂNG KÝ LỆNH STOCK (Xử lý song song cả tra cứu và cài đặt Alert)
 bot.command('stock', stockController.checkStockCommand);
 
 bot.command('getid', async (ctx) => {
     try {
-        const userId = ctx.from.id;          // ID của người dùng gõ lệnh
-        const chatId = ctx.chat.id;          // ID của phòng chat hiện tại (cá nhân hoặc nhóm)
-        const chatType = ctx.chat.type;      // Loại phòng chat (private, group, supergroup)
+        const userId = ctx.from.id;          
+        const chatId = ctx.chat.id;          
+        const chatType = ctx.chat.type;      
 
-        // Lấy Thread ID (nếu nhóm có bật tính năng chia Topic)
         const threadId = ctx.message.message_thread_id;
 
         let responseText = `👤 <b>ID của bạn:</b> <code>${userId}</code>\n`;
         responseText += `💬 <b>ID Cuộc trò chuyện:</b> <code>${chatId}</code> (<i>${chatType}</i>)\n`;
 
-        // Nếu lệnh được gõ trong một Topic của nhóm (Thread)
         if (threadId) {
             responseText += `🧵 <b>ID Topic (Thread):</b> <code>${threadId}</code>\n`;
         }
@@ -74,9 +73,8 @@ bot.on(['video', 'video_note', 'document'], async (ctx) => {
         const isVideoDoc = ctx.message.document && ctx.message.document.mime_type?.startsWith('video/');
         const video = ctx.message.video || ctx.message.video_note || (isVideoDoc ? ctx.message.document : null);
 
-        if (!video) return; // Không phải video thì bỏ qua
+        if (!video) return; 
 
-        // Gửi câu hỏi kèm 2 nút bấm Có / Không, reply trực tiếp vào video đó
         await ctx.reply('🎬 Tôi phát hiện một video. Bạn có muốn trích xuất nhạc từ video này không?', {
             reply_markup: {
                 inline_keyboard: [
@@ -99,24 +97,18 @@ bot.on(['video', 'video_note', 'document'], async (ctx) => {
 bot.action('convert_mp3_no', async (ctx) => {
     try {
         await ctx.answerCbQuery('Đã hủy bỏ yêu cầu.');
-        await ctx.deleteMessage(); // Xóa tin nhắn câu hỏi của bot đi cho sạch nhóm
+        await ctx.deleteMessage(); 
     } catch (err) {
         console.error('Lỗi khi hủy:', err.message);
     }
 });
 
 // 3. Lắng nghe khi người dùng bấm nút "Có"
-// 3. Lắng nghe khi người dùng bấm nút "Có"
-// 3. Lắng nghe khi người dùng bấm nút "Có" (hoặc nút Chuyển qua MP3 dưới video TikTok)
 bot.action('convert_mp3_yes', async (ctx) => {
     try {
-        // Tin nhắn chứa nút bấm hiện tại (nơi người dùng click)
         const currentMessage = ctx.callbackQuery.message;
-        // Tin nhắn được reply (nếu có, đối với trường hợp bot hỏi Có/Không ở video thường)
         const repliedMessage = currentMessage.reply_to_message;
         
-        // Ưu tiên tìm video trực tiếp ở tin nhắn hiện tại trước (áp dụng cho video TikTok gửi kèm nút)
-        // Nếu không có mới tìm ở tin nhắn được reply (áp dụng cho video thường người dùng gửi lên)
         const targetMessage = (currentMessage.video || currentMessage.video_note || currentMessage.document) 
             ? currentMessage 
             : repliedMessage;
@@ -143,7 +135,6 @@ bot.action('convert_mp3_yes', async (ctx) => {
 
         await ctx.answerCbQuery('🔄 Đang khởi tạo tiến trình trích xuất...');
         
-        // Nếu đây là tin nhắn hỏi "Có/Không" (không phải tin nhắn chứa video trực tiếp), ta xóa nó đi cho sạch
         if (targetMessage !== currentMessage) {
             try {
                 await ctx.deleteMessage();
@@ -152,7 +143,6 @@ bot.action('convert_mp3_yes', async (ctx) => {
             }
         }
 
-        // Gọi trực tiếp audioController để xử lý convert
         await audioController.processAndSendMp3(ctx, fileId);
 
     } catch (err) {
@@ -172,7 +162,6 @@ bot.on('message', async (ctx) => {
                 return;
             }
 
-            // Nếu là link TikTok thì nhảy vào bộ điều khiển tải video
             if (messageText.includes('tiktok.com')) {
                 lastDebugStatus = "Phát hiện link TikTok gửi từ người dùng";
                 const urlRegex = /(https?:\/\/[^\s]+tiktok\.com[^\s]*)/gi;
@@ -184,7 +173,6 @@ bot.on('message', async (ctx) => {
                 }
             }
 
-            // Thả reaction tin nhắn thường
             const randomEmoji = EMOJI_LIST[Math.floor(Math.random() * EMOJI_LIST.length)];
             try {
                 await ctx.telegram.callApi('setMessageReaction', {
@@ -203,7 +191,6 @@ bot.on('message', async (ctx) => {
     }
 });
 
-// Hàm xử lý webhook Express nhận dữ liệu từ Telegram
 exports.handleTelegramWebhook = async (req, res) => {
     try {
         lastDebugStatus = "No command triggered yet";
