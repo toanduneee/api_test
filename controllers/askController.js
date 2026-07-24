@@ -43,6 +43,7 @@ Quy tắc trình bày:
                 parse_mode: 'Markdown',
                 disable_web_page_preview: true
             });
+            console.log('Đã gửi tin nhắn');
         } catch (markdownErr) {
             console.warn('Lỗi parse Markdown của Telegram, gửi lại dạng Plain Text:', markdownErr.message);
             // Fallback gửi thường nếu tin nhắn chứa ký tự đặc biệt gây lỗi
