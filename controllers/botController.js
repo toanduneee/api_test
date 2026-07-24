@@ -2,6 +2,7 @@ const { Telegraf } = require('telegraf');
 const videoController = require('./videoController');
 const stockController = require('./stockController');
 const audioController = require('./audioController');
+const askController = require('./askController');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
@@ -40,6 +41,8 @@ bot.command('hello', async (ctx) => {
 
 // ĐĂNG KÝ LỆNH STOCK (Xử lý song song cả tra cứu và cài đặt Alert)
 bot.command('stock', stockController.checkStockCommand);
+
+bot.command('ask', askController.replyWithAI);
 
 bot.command('getid', async (ctx) => {
     try {
