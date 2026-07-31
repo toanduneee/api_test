@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path'); 
 const apiRoutes = require('./routes/apiRoutes'); 
 const stockController = require('./controllers/stockController'); 
+const spxController = require('./controllers/spxController');
 const cron = require('node-cron'); 
 
 const app = express(); 
@@ -68,6 +69,12 @@ cron.schedule('*/1 13-15 * * 1-5', async () => {
         stockController.sendAutomaticStockAlert('TCB', TARGET_CHAT_ID); 
         afternoonCounter = 0; // Reset bộ đếm
     }
+}, { timezone: "Asia/Ho_Chi_Minh" });
+
+// Cronjob cho track cái mua hàng
+cron.schedule('*/15 7-22 * * *', async () => {
+    console.log('[CRON SPX] Đang tiến hành quét tự động đơn hàng...');
+    await spxController.autoTrackSPXOrders();
 }, { timezone: "Asia/Ho_Chi_Minh" });
 
 app.listen(PORT, () => {     
