@@ -11,30 +11,26 @@ const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
 const EMOJI_LIST = ['👍', '❤️', '😂', '🎉', '👏', '🔥', '😁', '😎', '😍', '🤩', '🥳', '🤯', '🤔', '🤗', '😇', '🤠', '👽', '👻', '💋', '💯'];
 let lastDebugStatus = "No command triggered yet";
 
+// Trong controllers/botController.js
 bot.start(async (ctx) => {
   const welcomeMessage = 
-    `🤖 **CHÀO MƯỜNG BẠN ĐẾN VỚI MULTI-FUNCTION BOT!**\n\n` +
-    `Dưới đây là các tính năng hệ thống đang hỗ trợ:\n\n` +
-
-    `📦 **1. Theo dõi đơn hàng SPX Express:**\n` +
-    `• \`/add [Mã_Đơn]\` - Thêm đơn hàng vào danh sách theo dõi\n` +
-    `• \`/check\` - Quét & kiểm tra nhanh toàn bộ đơn\n` +
-    `• \`/list\` - Xem danh sách đơn đang theo dõi\n\n` +
-
-    `📈 **2. Trắc cứu & Báo giá Cổ phiếu:**\n` +
-    `• \`/stock [Mã_CP]\` - Tra cứu giá nhanh (Ví dụ: \`/stock TCB\`)\n` +
-    `• \`/stock [Mã_CP] [Giá_Min]-[Giá_Max]\` - Đặt cảnh báo giá\n\n` +
-
+    `🤖 **CHỨC NĂNG CỦA BOT!**\n\n` +
+    `Dưới đây là các tính năng hỗ trợ:\n\n` +
+    `🚚 **1. Theo dõi SPX Express:**\n` +
+    `  • \`/add [Mã_Đơn] [Tên_Gợi_Nhớ]\` - Thêm đơn theo dõi (Ví dụ: \`/add SPXVN069064486237 Áo sơ mi\`)\n` +
+    `  • \`/check\` - Quét & kiểm tra nhanh toàn bộ đơn\n` +
+    `  • \`/list\` - Xem danh sách đơn đang theo dõi\n\n` +
+    `📈 **2. Tra cứu & Báo giá cổ phiếu:**\n` +
+    `  • \`/stock [Mã_CP]\` - Tra cứu giá nhanh (Ví dụ: \`/stock TCB\`)\n` +
+    `  • \`/stock [Mã_CP] [Giá_Min]-[Giá_Max]\` - Đặt cảnh báo giá\n\n` +
     `🤖 **3. Trợ lý AI (Groq):**\n` +
-    `• \`/ask [Câu_hỏi]\` - Hỏi đáp thông minh với AI\n\n` +
-
-    `🎬 **4. Tiện ích Video & Âm thanh:**\n` +
-    `• Gửi **Link TikTok** bất kỳ vào chat -> Bot tự tải Video không logo!\n` +
-    `• Gửi **Video / Video Note** vào chat -> Bot hỗ trợ trích xuất file MP3!\n\n` +
-
-    `🆔 **5. Tiện ích khác:**\n` +
-    `• \`/getid\` - Lấy ID Chat / User / Topic hiện tại\n\n` +
-    `💡 *Gửi lệnh hoặc thao tác ngay bên dưới nhé!*`;
+    `  • \`/ask [Câu_hỏi]\` - Hỏi đáp thông minh với AI\n\n` +
+    `🎥 **4. Tiện ích Video & Âm thanh:**\n` +
+    `  • Gửi **Link TikTok** vào chat -> Bot tải Video không logo!\n` +
+    `  • Gửi **Video / Video Note** vào chat -> Bot hỗ trợ trích xuất file MP3!\n\n` +
+    `🔍 **5. Tiện ích khác:**\n` +
+    `  • \`/getid\` - Lấy ID Chat / User / Topic hiện tại\n\n` +
+    `*Gõ lệnh hoặc thao tác ngay bên dưới nhé!*`;
 
   await ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
 });

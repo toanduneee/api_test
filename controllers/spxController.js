@@ -1,14 +1,14 @@
 const axios = require('axios');
 
 const GOOGLE_SHEET_API = process.env.GOOGLE_SHEET_API;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-// Hàm helper: Format Unix timestamp sang giờ Việt Nam
 function formatTime(unixTimestamp) {
+  if (!unixTimestamp) return 'Chưa có dữ liệu';
   const date = new Date(unixTimestamp * 1000);
   return date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 }
 
-// Hàm helper: Gọi API SPX lấy trạng thái
 async function fetchSPXTracking(trackingNumber) {
   const url = `https://spx.vn/shipment/order/open/order/get_order_info?spx_tn=${trackingNumber}&language_code=vi`;
   try {
@@ -33,28 +33,16 @@ async function fetchSPXTracking(trackingNumber) {
   return null;
 }
 
-// ==========================================
-// CÁC HÀM XỬ LÝ LỆNH TELEGRAM (CONTROLLER)
-// ==========================================
-
-// Xử lý lệnh /start
-exports.handleStart = (ctx) => {
-  ctx.reply(
-    `🤖 Bot Theo Dõi Đơn Hàng SPX cá nhân!\n\n` +
-    `• Thêm đơn hàng: \`/add [Mã_Đơn]\`\n` +
-    `• Kiểm tra nhanh toàn bộ đơn: \`/check\`\n` +
-    `• Xem danh sách của bạn: \`/list\`\n\n` +
-    `Ví dụ: \`/add SPXVN069064486237\``,
-    { parse_mode: 'Markdown' }
-  );
-};
-
-// Xử lý lệnh /add
+// Xử lý lệnh /add: /add <Mã_Đơn> [Tên_Gợi_Nhớ]
 exports.handleAdd = async (ctx) => {
-  const args = ctx.message.text.split(' ');
-  if (args.length < 2) return ctx.reply('⚠️ Cú pháp đúng: /add [Mã_vận_đơn]');
-  
+  const args = ctx.message.text.split(/\s+/);
+  if (args.length < 2) {
+    return ctx.reply('⚠️ Cú pháp đúng: `/add [Mã_vận_đơn] [Tên_gợi_nhớ]`\n\nVí dụ: `/add SPXVN069064486237 Áo sơ mi`', { parse_mode: 'Markdown' });
+  }
+
   const trackingNumber = args[1].trim().toUpperCase();
+  // Lấy toàn bộ chữ phía sau làm tên gợi nhớ (nếu không nhập thì lấy mã vận đơn)
+  const orderName = args.slice(2).join(' ').trim() || trackingNumber;
   const chatId = ctx.chat.id;
 
   ctx.reply(`🔍 Đang kiểm tra hành trình đơn hàng \`${trackingNumber}\` trên SPX...`, { parse_mode: 'Markdown' });
@@ -72,11 +60,12 @@ exports.handleAdd = async (ctx) => {
     const res = await axios.post(GOOGLE_SHEET_API, {
       action: 'add',
       chatId: chatId,
-      trackingNumber: trackingNumber
+      trackingNumber: trackingNumber,
+      orderName: orderName
     });
 
     if (res.data.status === 'success') {
-      let successMsg = `✅ Đã thêm thành công mã \`${trackingNumber}\` vào danh sách theo dõi.\n\n`;
+      let successMsg = `✅ Đã thêm thành công **${orderName}** (\`${trackingNumber}\`) vào danh sách theo dõi.\n\n`;
       if (spxData) {
         successMsg += `📍 **Trạng thái hiện tại:** ${description}\n` +
                       `🕒 **Cập nhật lúc:** ${formatTime(lastTime)}\n\n` +
@@ -84,13 +73,13 @@ exports.handleAdd = async (ctx) => {
       } else {
         successMsg += `⚠️ Đơn hàng hiện chưa có hành trình trên hệ thống SPX. Bot sẽ tiếp tục theo dõi ngầm cho bạn.`;
       }
-      
+
       ctx.reply(successMsg, { parse_mode: 'Markdown' });
 
       if (spxData) {
         const sheetRes = await axios.get(GOOGLE_SHEET_API);
         const latestRow = sheetRes.data.find(row => row.chatId === chatId.toString() && row.trackingNumber === trackingNumber);
-        
+
         if (latestRow) {
           await axios.post(GOOGLE_SHEET_API, {
             action: 'update',
@@ -105,6 +94,7 @@ exports.handleAdd = async (ctx) => {
       ctx.reply(`⚠️ Bạn đã thêm đơn \`${trackingNumber}\` từ trước rồi.`);
     }
   } catch (error) {
+    console.error(error);
     ctx.reply('❌ Lỗi kết nối tới cơ sở dữ liệu Google Sheet hoặc API SPX.');
   }
 };
@@ -131,20 +121,24 @@ exports.handleCheck = async (ctx) => {
       const spxData = await fetchSPXTracking(order.trackingNumber);
 
       if (spxData) {
-        const isDelivered = spxData.description.includes("Giao hàng thành công") || 
-                            spxData.description.includes("Giao thành công") || 
+        const isDelivered = spxData.description.includes("Giao hàng thành công") ||
+                            spxData.description.includes("Giao thành công") ||
                             spxData.description.includes("Đã giao thành công");
-                            
+
         const isOlderThanOneWeek = (currentTime - spxData.time) > ONE_WEEK_SECONDS;
 
         if (isDelivered && isOlderThanOneWeek) {
-          continue; 
+          continue;
         }
 
-        reportMsg += `📦 **Mã đơn:** \`${order.trackingNumber}\`\n` +
-                    `📍 **Trạng thái:** ${spxData.description}\n` +
-                    `🕒 **Cập nhật:** ${formatTime(spxData.time)}\n──────────────────\n`;
-        
+        const displayName = order.orderName && order.orderName !== order.trackingNumber
+          ? `**${order.orderName}** (\`${order.trackingNumber}\`)`
+          : `\`${order.trackingNumber}\``;
+
+        reportMsg += `📦 **Đơn:** ${displayName}\n` +
+                     `📍 **Trạng thái:** ${spxData.description}\n` +
+                     `🕒 **Cập nhật:** ${formatTime(spxData.time)}\n──────────────────\n`;
+
         displayedCount++;
 
         if (spxData.time > order.savedTime) {
@@ -156,7 +150,11 @@ exports.handleCheck = async (ctx) => {
           });
         }
       } else {
-        reportMsg += `📦 **Mã đơn:** \`${order.trackingNumber}\`\n❌ Chưa có thông tin trên hệ thống SPX.\n──────────────────\n`;
+        const displayName = order.orderName && order.orderName !== order.trackingNumber
+          ? `**${order.orderName}** (\`${order.trackingNumber}\`)`
+          : `\`${order.trackingNumber}\``;
+
+        reportMsg += `📦 **Đơn:** ${displayName}\n❌ Chưa có thông tin trên hệ thống SPX.\n──────────────────\n`;
         displayedCount++;
       }
     }
@@ -180,13 +178,17 @@ exports.handleList = async (ctx) => {
     const res = await axios.post(GOOGLE_SHEET_API, { action: 'list', chatId: chatId });
     const myOrders = res.data;
 
-    if (myOrders.length === 0) {
+    if (!myOrders || myOrders.length === 0) {
       return ctx.reply('📭 Bạn đang không theo dõi đơn hàng nào.');
     }
 
     let response = '📋 **Đơn hàng của bạn:**\n\n';
     myOrders.forEach((o, i) => {
-      response += `${i + 1}. \`${o.trackingNumber}\` - ${o.description}\n`;
+      const displayName = o.orderName && o.orderName !== o.trackingNumber
+        ? `**${o.orderName}** (\`${o.trackingNumber}\`)`
+        : `\`${o.trackingNumber}\``;
+
+      response += `${i + 1}. ${displayName} - ${o.description || 'Chờ cập nhật'}\n`;
     });
     ctx.reply(response, { parse_mode: 'Markdown' });
   } catch (error) {
@@ -203,9 +205,16 @@ exports.autoTrackSPXOrders = async () => {
     for (const order of allOrders) {
       const spxData = await fetchSPXTracking(order.trackingNumber);
 
-      if (spxData && spxData.time > order.savedTime) {
+      const currentTime = Number(spxData?.time || 0);
+      const savedTime = Number(order.savedTime || 0);
+
+      if (spxData && currentTime > savedTime) {
+        const displayName = order.orderName && order.orderName !== order.trackingNumber
+          ? `**${order.orderName}** (\`${order.trackingNumber}\`)`
+          : `\`${order.trackingNumber}\``;
+
         const message = `🚚 **CẬP NHẬT ĐƠN HÀNG MỚI!**\n\n` +
-                        `📦 **Mã vận đơn:** \`${order.trackingNumber}\`\n` +
+                        `📦 **Đơn hàng:** ${displayName}\n` +
                         `📍 **Trạng thái:** ${spxData.description}`;
 
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -220,9 +229,11 @@ exports.autoTrackSPXOrders = async () => {
           time: spxData.time,
           description: spxData.description
         });
+
+        console.log(`[CRON SPX] Đã gửi thông báo cho mã: ${order.trackingNumber}`);
       }
     }
-    console.log('[CRON SPX] Quét và cập nhật đơn hàng thành công!');
+    console.log('[CRON SPX] Quét và cập nhật đơn hàng hoàn tất!');
   } catch (err) {
     console.error('[CRON SPX] Lỗi quét tự động:', err.message);
   }
