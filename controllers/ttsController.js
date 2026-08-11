@@ -1,9 +1,11 @@
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
 exports.generateSpeech = async (req, res) => {
+  let tempFilePath = null;
+
   try {
     const { text, voice = 'vi-VN-HoaiMyNeural' } = req.body;
 
@@ -11,24 +13,33 @@ exports.generateSpeech = async (req, res) => {
       return res.status(400).json({ error: 'Text cannot be empty' });
     }
 
-    // 1. Tạo tên file mp3 tạm
-    const tempFileName = `temp_${crypto.randomBytes(6).toString('hex')}.mp3`;
-    const tempFilePath = path.join(__dirname, '../', tempFileName);
+    // 1. Tạo file tạm an toàn
+    const tempFileName = `temp_${crypto.randomBytes(8).toString('hex')}.mp3`;
+    tempFilePath = path.join(__dirname, '../', tempFileName);
 
-    // 2. Làm sạch text tránh lỗi lệnh CLI
-    const cleanText = text.replace(/"/g, '\\"');
+    // 2. Dùng spawn và truyền mảng tham số (Tránh Command Injection tuyệt đối)
+    const args = [
+      '-m', 'edge_tts',
+      '--voice', voice,
+      '--text', text, // Giữ nguyên text gốc, không cần replace dấu "
+      '--write-media', tempFilePath
+    ];
 
-    // 3. Câu lệnh gọi edge-tts của Python
-    const command = `python -m edge_tts --voice "${voice}" --text "${cleanText}" --write-media "${tempFilePath}"`;
+    const pyProcess = spawn('python', args);
 
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error('Lỗi Python TTS:', stderr || error.message);
-        if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+    let stderrData = '';
+    pyProcess.stderr.on('data', (data) => {
+      stderrData += data.toString();
+    });
+
+    pyProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error('Lỗi Python TTS:', stderrData);
+        if (tempFilePath && fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
         return res.status(500).json({ error: 'Không thể tạo âm thanh từ Python TTS' });
       }
 
-      // 4. Đọc file MP3 tạo ra và gửi về Client
+      // 3. Đọc file MP3 và stream về cho App Android
       fs.readFile(tempFilePath, (readErr, data) => {
         // Xóa file tạm ngay sau khi đọc xong
         if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
@@ -43,8 +54,15 @@ exports.generateSpeech = async (req, res) => {
       });
     });
 
+    pyProcess.on('error', (err) => {
+      console.error('Không thể khởi chạy tiến trình Python:', err);
+      if (tempFilePath && fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+      return res.status(500).json({ error: 'Lỗi môi trường Python trên Server' });
+    });
+
   } catch (error) {
     console.error('TTS Controller Error:', error);
+    if (tempFilePath && fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
     if (!res.headersSent) {
       return res.status(500).json({ error: 'Lỗi Server: ' + error.message });
     }
