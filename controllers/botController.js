@@ -66,7 +66,8 @@ bot.command('hello', async (ctx) => {
     }
 });
 
-bot.command('tts', ttsController.handleTTSCommand);
+bot.command('tts', ttsController.handleMicrosoftTTS);
+bot.command('tts1', ttsController.handleGoogleTTS);
 
 // Lệnh bên SPX
 bot.command('add', spxController.handleAdd);

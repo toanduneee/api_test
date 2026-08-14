@@ -13,6 +13,7 @@ router.post('/api/get-video', videoController.downloadTiktokApi);
 
 router.post('/api/interpret', interpretController.interpretCards);
 
-router.post('/api/tts', ttsController.generateSpeech);
+router.post('/api/tts', ttsController.generateMicrosoftSpeechAPI);
+router.post('/api/tts1', ttsController.generateGoogleSpeechAPI);
 
 module.exports = router;
