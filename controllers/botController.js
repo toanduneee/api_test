@@ -4,6 +4,7 @@ const stockController = require('./stockController');
 const audioController = require('./audioController');
 const askController = require('./askController');
 const spxController = require('./spxController');
+const ttsController = require('./ttsController');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
@@ -64,6 +65,8 @@ bot.command('hello', async (ctx) => {
         lastDebugStatus = `Error in hello command: ${err.message}`;
     }
 });
+
+bot.command('tts', ttsController.handleTTSCommand);
 
 // Lệnh bên SPX
 bot.command('add', spxController.handleAdd);
