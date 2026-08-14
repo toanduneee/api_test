@@ -1,10 +1,12 @@
 const axios = require('axios');
 
-// Bộ nhớ tạm lưu dữ liệu mới nhất và danh sách cảnh báo
 let latestStockData = {}; 
 let priceAlerts = []; // Cấu trúc: { chatId, symbol, minPrice, maxPrice }
 
-// Hàm lấy dữ liệu cổ phiếu từ API mới của Cafef [source: 1]
+// 2 mảng RAM lưu chat ID và mã theo dõi định kỳ
+const subscribedChatIds = [];
+const subscribedSymbols = [];
+
 async function getCafefNewPrice(symbol) {
     try {
         const response = await axios.get(`https://msh-appdata.cafef.vn/rest-api/api/v1/Watchlists/${symbol.toUpperCase()}/price`, {
@@ -43,31 +45,36 @@ async function getCafefNewPrice(symbol) {
                 netVal: netValBillion
             };
 
-            // Cập nhật vào bộ nhớ tạm để dùng chung
+            // Cập nhật vào bộ nhớ tạm
             latestStockData[result.symbol] = result;
             return result;
         }
         return null;
     } catch (err) {
-        console.error(`[Cafef New API] Lỗi lấy dữ liệu mã ${symbol}:`, err.message);
+        console.error(`[Cafef API] Lỗi lấy dữ liệu mã ${symbol}:`, err.message);
         return null;
     }
 }
 
-// Handler cho lệnh check tay và cài đặt Cảnh báo giá: /stock <mã> <giá_thấp>-<giá_cao>
 exports.checkStockCommand = async (ctx) => {
     try {
         const text = ctx.message.text.trim();
         const args = text.split(/\s+/).slice(1);
+        const chatId = ctx.chat.id.toString();
         
         if (args.length === 0) {
-            return await ctx.reply('⚠️ Vui lòng nhập đúng cú pháp.\nVí dụ check tay: `/stock TCB` \nVí dụ đặt alert: `/stock TCB 28.5-29.0`', { parse_mode: 'Markdown' });
+            return await ctx.reply(
+                '⚠️ Vui lòng nhập đúng cú pháp:\n' +
+                '• Bật thông báo & xem giá: `/stock <MÃ>` (VD: `/stock TCB`)\n' +
+                '• Đặt cảnh báo giá khẩn cấp: `/stock <MÃ> <giá_min>-<giá_max>` (VD: `/stock TCB 28.5-29.0`)',
+                { parse_mode: 'Markdown' }
+            );
         }
 
         const symbol = args[0].toUpperCase();
         const rangeArg = args[1];
 
-        // Trường hợp 1: Người dùng đặt cảnh báo giá (Có tham số giá)
+        // Trường hợp 1: Đặt cảnh báo giá khẩn cấp
         if (rangeArg && rangeArg.includes('-')) {
             const prices = rangeArg.split('-');
             const minPrice = parseFloat(prices[0]);
@@ -77,16 +84,28 @@ exports.checkStockCommand = async (ctx) => {
                 return await ctx.reply('❌ Khoảng giá không hợp lệ. Ví dụ đúng: 28.5-29.0');
             }
 
-            // Lưu hoặc cập nhật cảnh báo của user này cho mã cổ phiếu đó
-            const chatId = ctx.chat.id.toString();
             priceAlerts = priceAlerts.filter(alert => !(alert.chatId === chatId && alert.symbol === symbol));
             priceAlerts.push({ chatId, symbol, minPrice, maxPrice });
 
-            return await ctx.reply(`🔔 Đã bật cảnh báo cho **${symbol}** khi giá rơi vào khoảng **${minPrice} - ${maxPrice}**!`, { parse_mode: 'Markdown' });
+            return await ctx.reply(`🔔 Đã bật cảnh báo khẩn cấp cho *${symbol}* khi giá chạm *${minPrice} - ${maxPrice}*!`, { parse_mode: 'Markdown' });
         }
 
-        // Trường hợp 2: Check tay trực tiếp như cũ [source: 1]
-        await ctx.reply(`🔍 Đang quét dữ liệu mã ${symbol} từ API Cafef App...`);
+        // Trường hợp 2: Lưu/Cập nhật vào 2 mảng RAM để nhận thông báo định kỳ
+        const existingIndex = subscribedChatIds.indexOf(chatId);
+        let notifyNote = '';
+
+        if (existingIndex !== -1) {
+            const oldSymbol = subscribedSymbols[existingIndex];
+            subscribedSymbols[existingIndex] = symbol;
+            notifyNote = `\n\n🔄 <i>Đã đổi mã theo dõi định kỳ từ <b>${oldSymbol}</b> sang <b>${symbol}</b>.</i>`;
+        } else {
+            subscribedChatIds.push(chatId);
+            subscribedSymbols.push(symbol);
+            notifyNote = `\n\n✅ <i>Đã bật theo dõi định kỳ mã <b>${symbol}</b> cho chat này (Dùng /stockcancel để hủy).</i>`;
+        }
+
+        // Quét và trả về giá ngay lập tức
+        await ctx.reply(`🔍 Đang quét dữ liệu mã ${symbol} từ Cafef...`);
         const data = await getCafefNewPrice(symbol);
 
         if (!data) {
@@ -101,57 +120,91 @@ exports.checkStockCommand = async (ctx) => {
             `📊 <b>CẬP NHẬT CỔ PHIẾU: ${data.symbol}</b>\n\n` +
             `💰 <b>Giá hiện tại:</b> <code>${data.price}</code>\n` +
             `${statusEmoji} <b>Biến động:</b> <code>${data.change > 0 ? '+' : ''}${data.change}</code> (${data.percent}%)\n` +
-            `🌐 <b>Giao dịch khối ngoại:</b>\n${foreignText}\n\n` +
-            `<i>Cập nhật tự động từ hệ thống</i>`,
+            `🌐 <b>Giao dịch khối ngoại:</b>\n${foreignText}` +
+            notifyNote,
             { parse_mode: 'HTML' }
         );
     } catch (err) {
-        console.error('Lỗi lệnh stock:', err.message);
+        console.error('Lỗi lệnh /stock:', err.message);
     }
 };
 
-// Hàm quét dữ liệu ngầm (Chạy mỗi 1 phút từ index.js)
-exports.fetchPriceInBackground = async (symbol) => {
-    const data = await getCafefNewPrice(symbol);
-    if (!data) return null;
+exports.cancelStockCommand = async (ctx) => {
+    try {
+        const chatId = ctx.chat.id.toString();
+        const index = subscribedChatIds.indexOf(chatId);
 
-    // Kiểm tra danh sách Price Alert ngay lập tức
+        // Xóa cảnh báo khẩn cấp nếu có
+        priceAlerts = priceAlerts.filter(alert => alert.chatId !== chatId);
+
+        if (index !== -1) {
+            const removedSymbol = subscribedSymbols[index];
+            
+            // Xóa đồng thời ở cả 2 mảng
+            subscribedChatIds.splice(index, 1);
+            subscribedSymbols.splice(index, 1);
+
+            return await ctx.reply(
+                `🛑 Đã hủy theo dõi mã <b>${removedSymbol}</b>.\nĐoạn chat này sẽ không nhận thông báo tự động nữa.`,
+                { parse_mode: 'HTML' }
+            );
+        } else {
+            return await ctx.reply('ℹ️ Đoạn chat này hiện chưa đăng ký theo dõi mã cổ phiếu nào.');
+        }
+    } catch (err) {
+        console.error('Lỗi lệnh /stockcancel:', err.message);
+    }
+};
+
+exports.fetchAllSubscribedPrices = async () => {
+    // 1. Lọc ra danh sách các mã duy nhất cần quét (từ cả thông báo định kỳ và alert khẩn cấp)
+    const symbolsToFetch = [...new Set([...subscribedSymbols, ...priceAlerts.map(a => a.symbol)])];
+
     const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-    if (!TELEGRAM_BOT_TOKEN) return data;
 
-    for (const alert of priceAlerts) {
-        if (alert.symbol === symbol && data.price >= alert.minPrice && data.price <= alert.maxPrice) {
-            const statusEmoji = data.change > 0 ? '🟢' : (data.change < 0 ? '🔴' : '🟡');
-            const alertMessage = `🚨 <b>CẢNH BÁO GIÁ KHẨN CẤP: ${symbol}</b> 🚨\n\n` +
-                                 `💵 <b>Giá hiện tại:</b> <code>${data.price}</code> nằm trong khoảng cài đặt (${alert.minPrice} - ${alert.maxPrice})\n` +
-                                 `${statusEmoji} <b>Biến động:</b> <code>${data.change > 0 ? '+' : ''}${data.change}</code> (${data.percent}%)`;
+    for (const sym of symbolsToFetch) {
+        const data = await getCafefNewPrice(sym);
+        if (!data) continue;
 
-            axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                chat_id: alert.chatId,
-                text: alertMessage,
-                parse_mode: 'HTML'
-            }).catch(err => console.error('Lỗi gửi alert khẩn cấp:', err.message));
+        // Kiểm tra Alert khẩn cấp nếu có
+        if (TELEGRAM_BOT_TOKEN) {
+            for (const alert of priceAlerts) {
+                if (alert.symbol === sym && data.price >= alert.minPrice && data.price <= alert.maxPrice) {
+                    const statusEmoji = data.change > 0 ? '🟢' : (data.change < 0 ? '🔴' : '🟡');
+                    const alertMessage = `🚨 <b>CẢNH BÁO GIÁ KHẨN CẤP: ${sym}</b> 🚨\n\n` +
+                                         `💵 <b>Giá hiện tại:</b> <code>${data.price}</code> nằm trong khoảng cài đặt (${alert.minPrice} - ${alert.maxPrice})\n` +
+                                         `${statusEmoji} <b>Biến động:</b> <code>${data.change > 0 ? '+' : ''}${data.change}</code> (${data.percent}%)`;
+
+                    axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                        chat_id: alert.chatId,
+                        text: alertMessage,
+                        parse_mode: 'HTML'
+                    }).catch(err => console.error('Lỗi gửi alert khẩn cấp:', err.message));
+                }
+            }
         }
     }
-    return data;
 };
 
-// Hàm gửi báo cáo định kỳ (Đã đổi text thành 10 phút)
-exports.sendAutomaticStockAlert = async (symbol, chatId) => {
+exports.sendPeriodicStockUpdates = async () => {
     const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-    if (!TELEGRAM_BOT_TOKEN) return;
+    if (!TELEGRAM_BOT_TOKEN || subscribedChatIds.length === 0) return;
 
-    // Lấy dữ liệu từ bộ nhớ tạm để tránh gọi API trùng lặp
-    const data = latestStockData[symbol.toUpperCase()];
+    for (let i = 0; i < subscribedChatIds.length; i++) {
+        const chatId = subscribedChatIds[i];
+        const symbol = subscribedSymbols[i];
 
-    if (data) {
+        const data = latestStockData[symbol] || await getCafefNewPrice(symbol);
+        if (!data) continue;
+
         const statusEmoji = data.change > 0 ? '🟢' : (data.change < 0 ? '🔴' : '🟡');
         const foreignEmoji = data.netVal > 0 ? '🔵 Mua ròng' : (data.netVal < 0 ? '🟠 Bán ròng' : '⚪ Cân bằng');
         const foreignText = `${foreignEmoji}: <code>${data.netVal > 0 ? '+' : ''}${data.netVal}</code> tỷ`;
 
-        const message = `🔔 <b>CẬP NHẬT BIẾN ĐỘNG 10 PHÚT: ${data.symbol}</b>\n\n` +
+        const message = `🔔 <b>CẬP NHẬT BIẾN ĐỘNG (10 PHÚT): ${data.symbol}</b>\n\n` +
                         `💵 <b>Giá khớp:</b> <code>${data.price}</code> (${data.change > 0 ? '+' : ''}${data.change} | ${data.percent}%)\n` +
-                        `🌐 <b>Khối ngoại:</b> ${foreignText}`;
+                        `🌐 <b>Khối ngoại:</b> ${foreignText}\n\n` +
+                        `<i>Dùng /stockcancel để dừng nhận tin.</i>`;
 
         try {
             await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -159,9 +212,9 @@ exports.sendAutomaticStockAlert = async (symbol, chatId) => {
                 text: message,
                 parse_mode: 'HTML'
             });
-            console.log(`Đã gửi cập nhật 10 phút mã ${symbol} thành công!`);
+            console.log(`Đã gửi cập nhật định kỳ mã ${symbol} tới chat ${chatId}`);
         } catch (error) {
-            console.error('Lỗi gửi báo cáo định kỳ:', error.message);
+            console.error(`Lỗi gửi định kỳ tới chat ${chatId}:`, error.message);
         }
     }
 };

@@ -22,10 +22,6 @@ app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.
 app.get('/ping', (req, res) => { res.status(200).send('pong'); });
 app.use('/', apiRoutes); 
 
-// ==========================================
-// CRON JOB MANAGER (ĐÃ CẬP NHẬT)
-// ==========================================
-const TARGET_CHAT_ID = '-1002144884147'; 
 let morningCounter = 0;
 let afternoonCounter = 0;
 
@@ -37,16 +33,16 @@ cron.schedule('*/1 9-11 * * 1-5', async () => {
     const currentMinute = localDate.getMinutes();     
     if (currentHour === 11 && currentMinute > 30) return;      
     
-    console.log(`[Sáng] Quét giá ngầm TCB lúc ${currentHour}:${currentMinute}`);     
+    console.log(`[Sáng] Quét giá ngầm các mã đã đăng ký lúc ${currentHour}:${currentMinute}`);     
     
-    // Bước 1: Quét ngầm mỗi phút để kiểm tra Price Alert
-    await stockController.fetchPriceInBackground('TCB');
+    // Bước 1: Quét ngầm tất cả các mã đang lưu trên RAM
+    await stockController.fetchAllSubscribedPrices();
     
-    // Bước 2: Tự động gửi báo cáo định kỳ mỗi 10 phút
+    // Bước 2: Tự động gửi báo cáo định kỳ mỗi 10 phút đến các chat ID tương ứng
     morningCounter++;
     if (morningCounter >= 10) {
-        stockController.sendAutomaticStockAlert('TCB', TARGET_CHAT_ID); 
-        morningCounter = 0; // Reset bộ đếm
+        await stockController.sendPeriodicStockUpdates(); 
+        morningCounter = 0;
     }
 }, { timezone: "Asia/Ho_Chi_Minh" });
 
@@ -58,20 +54,20 @@ cron.schedule('*/1 13-15 * * 1-5', async () => {
     const currentMinute = localDate.getMinutes();     
     if (currentHour === 15 && currentMinute > 0) return;      
     
-    console.log(`[Chiều] Quét giá ngầm TCB lúc ${currentHour}:${currentMinute}`);     
+    console.log(`[Chiều] Quét giá ngầm các mã đã đăng ký lúc ${currentHour}:${currentMinute}`);     
     
-    // Bước 1: Quét ngầm mỗi phút để kiểm tra Price Alert
-    await stockController.fetchPriceInBackground('TCB');
+    // Bước 1: Quét ngầm tất cả các mã đang lưu trên RAM
+    await stockController.fetchAllSubscribedPrices();
     
-    // Bước 2: Tự động gửi báo cáo định kỳ mỗi 10 phút
+    // Bước 2: Tự động gửi báo cáo định kỳ mỗi 10 phút đến các chat ID tương ứng
     afternoonCounter++;
     if (afternoonCounter >= 10) {
-        stockController.sendAutomaticStockAlert('TCB', TARGET_CHAT_ID); 
-        afternoonCounter = 0; // Reset bộ đếm
+        await stockController.sendPeriodicStockUpdates(); 
+        afternoonCounter = 0;
     }
 }, { timezone: "Asia/Ho_Chi_Minh" });
 
-// Cronjob cho track cái mua hàng
+// Cronjob cho track đơn hàng SPX
 cron.schedule('*/15 7-22 * * *', async () => {
     console.log('[CRON SPX] Đang tiến hành quét tự động đơn hàng...');
     await spxController.autoTrackSPXOrders();

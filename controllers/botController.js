@@ -17,19 +17,20 @@ bot.start(async (ctx) => {
     `🤖 **CHỨC NĂNG CỦA BOT!**\n\n` +
     `Dưới đây là các tính năng hỗ trợ:\n\n` +
     `🚚 **1. Theo dõi SPX Express:**\n` +
-    `  • \`/add [Mã_Đơn] [Tên_Gợi_Nhớ]\` - Thêm đơn theo dõi (Ví dụ: \`/add SPXVN069064486237 Áo sơ mi\`)\n` +
+    `  • \`/add [Mã_Đơn] [Tên_Gợi_Nhớ]\` - Thêm đơn theo dõi\n` +
     `  • \`/check\` - Quét & kiểm tra nhanh toàn bộ đơn\n` +
     `  • \`/list\` - Xem danh sách đơn đang theo dõi\n\n` +
     `📈 **2. Tra cứu & Báo giá cổ phiếu:**\n` +
-    `  • \`/stock [Mã_CP]\` - Tra cứu giá nhanh (Ví dụ: \`/stock TCB\`)\n` +
-    `  • \`/stock [Mã_CP] [Giá_Min]-[Giá_Max]\` - Đặt cảnh báo giá\n\n` +
+    `  • \`/stock [Mã_CP]\` - Tra cứu & tự động bật thông báo định kỳ (VD: \`/stock TCB\`)\n` +
+    `  • \`/stock [Mã_CP] [Giá_Min]-[Giá_Max]\` - Đặt cảnh báo giá khẩn cấp\n` +
+    `  • \`/stockcancel\` - Hủy nhận thông báo cổ phiếu tại chat này\n\n` +
     `🤖 **3. Trợ lý AI (Groq):**\n` +
     `  • \`/ask [Câu_hỏi]\` - Hỏi đáp thông minh với AI\n\n` +
     `🎥 **4. Tiện ích Video & Âm thanh:**\n` +
-    `  • Gửi **Link TikTok** vào chat -> Bot tải Video không logo!\n` +
-    `  • Gửi **Video / Video Note** vào chat -> Bot hỗ trợ trích xuất file MP3!\n\n` +
+    `  • Gửi **Link TikTok** -> Tải Video không logo\n` +
+    `  • Gửi **Video / Video Note** -> Trích xuất file MP3\n\n` +
     `🔍 **5. Tiện ích khác:**\n` +
-    `  • \`/getid\` - Lấy ID Chat / User / Topic hiện tại\n\n` +
+    `  • \`/getid\` - Lấy ID Chat / User / Topic\n\n` +
     `*Gõ lệnh hoặc thao tác ngay bên dưới nhé!*`;
 
   await ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
@@ -71,6 +72,7 @@ bot.command('list', spxController.handleList);
 
 // ĐĂNG KÝ LỆNH STOCK (Xử lý song song cả tra cứu và cài đặt Alert)
 bot.command('stock', stockController.checkStockCommand);
+bot.command('stockcancel', stockController.cancelStockCommand);
 
 // lệnh AI
 bot.command('ask', askController.replyWithAI);
