@@ -11,65 +11,113 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="Bói bài Lenormand 5 Lá - Dự Đoán Tương Lai">
     <meta property="og:description"
-        content="Nhập câu hỏi của bạn, trải nghiệm bốc 5 lá bài Lenormand với hiệu ứng 3D đẹp mắt và copy kết quả để hỏi AI giải nghĩa ngay!">
-    <meta property="og:image" content="https://api-test-wkof.onrender.com/banner.png">
-
-    <!-- Đường dẫn tuyệt đối đến trang web của bạn -->
-    <meta property="og:url" content="https://api-test-wkof.onrender.com/">
+        content="Nhập câu hỏi của bạn, trải nghiệm bốc 5 lá bài Lenormand với hiệu ứng 3D đẹp mắt và nhận luận giải sâu sắc từ AI!">
+    <meta property="og:image" content="https://toandunee.onrender.com/banner.png">
+    <meta property="og:url" content="https://toandunee.onrender.com/">
     <meta property="og:site_name" content="Lenormand Online">
 
-    <!-- Cấu hình thêm cho Twitter (nếu cần) -->
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Bói bài Lenormand 5 Lá - Dự Đoán Tương Lai">
     <meta name="twitter:description" content="Trải nghiệm bốc 5 lá bài Lenormand với hiệu ứng lật 3D sống động.">
-    <meta name="twitter:image" content="https://api-test-wkof.onrender.com/banner.png">
+    <meta name="twitter:image" content="https://toandunee.onrender.com/banner.png">
 
-    <!-- Nhúng file CSS bên ngoài -->
+    <!-- Google Fonts hỗ trợ tiếng Việt sắc nét -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <div class="container">
-        <h1>Trải Bài Lenormand 5 Lá</h1>
-        <p class="subtitle">Nhập câu hỏi của bạn bên dưới, sau đó bấm bốc bài để lật mở số mệnh.</p>
+    <!-- Hiệu ứng ánh sáng hậu cảnh -->
+    <div class="bg-orb bg-orb-1" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-2" aria-hidden="true"></div>
+    <div class="stars-overlay" aria-hidden="true"></div>
 
-        <div class="input-group">
-            <input type="text" id="user-question" placeholder="Ví dụ: Kỳ thi sắp tới của tôi sẽ thế nào?">
-        </div>
+    <!-- Thông báo nổi (Toast) -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-        <div class="btn-group">
-            <button class="btn-draw" id="action-btn" onclick="handleButtonClick()">Bốc bài</button>
-            <button class="btn-copy" id="copy-btn" onclick="copyResults()">Copy kết quả</button>
-        </div>
-        <div class="actions">
-            <button id="btn-interpret" class="btn-primary">Giải Nghĩa Trải Bài (AI)</button>
-        </div>
+    <main class="container">
+        <header class="hero">
+            <div class="badge">✦ ORACLE LENORMAND • 5 LÁ DÒNG THỜI GIAN ✦</div>
+            <h1>Trải Bài Lenormand</h1>
+            <p class="subtitle">
+                Tĩnh tâm nghĩ về điều bạn đang băn khoăn, nhập câu hỏi bên dưới và chạm để lật mở thông điệp của số mệnh.
+            </p>
+        </header>
 
-        <div class="cards-grid" id="cards-container">
-            <!-- 5 khung lá bài sẽ tự động sinh ra tại đây thông qua JS -->
-        </div>
-    </div>
+        <!-- Khung nhập câu hỏi & điều khiển -->
+        <section class="control-panel">
+            <div class="input-wrapper">
+                <span class="input-icon">✦</span>
+                <input
+                    type="text"
+                    id="user-question"
+                    placeholder="Ví dụ: Công việc hoặc kỳ thi sắp tới của tôi sẽ diễn biến thế nào?"
+                    autocomplete="off"
+                >
+            </div>
 
-    <!-- <div class="actions">
-        <button id="btn-interpret" class="btn-primary">Giải Nghĩa Trải Bài (AI)</button>
-    </div> -->
+            <!-- Gợi ý câu hỏi nhanh -->
+            <div class="quick-prompts">
+                <button type="button" class="chip" onclick="setQuestion('Chuyện tình cảm của tôi sắp tới sẽ thế nào?')">Tình cảm sắp tới</button>
+                <button type="button" class="chip" onclick="setQuestion('Công việc và tài chính tháng này của tôi ra sao?')">Công việc & Tài chính</button>
+                <button type="button" class="chip" onclick="setQuestion('Kỳ thi và kế hoạch sắp tới của tôi có thuận lợi không?')">Học tập & Dự định</button>
+            </div>
 
-    <!-- 3. Khu vực hiển thị kết quả luận giải -->
-    <div id="interpretation-section" class="result-box" style="display: none;">
-        <h3>Kết Quả Luận Giải Từ Chuyên Gia</h3>
+            <!-- Các nút điều khiển -->
+            <div class="btn-group">
+                <button class="btn btn-draw" id="action-btn" onclick="handleButtonClick()">
+                    <span class="btn-icon">✨</span> Bốc 5 Lá Bài
+                </button>
+                <button class="btn btn-interpret" id="btn-interpret" style="display: none;">
+                    <span class="btn-icon">🔮</span> Giải Nghĩa Bằng AI
+                </button>
+                <button class="btn btn-copy" id="copy-btn" onclick="copyResults()" style="display: none;">
+                    <span class="btn-icon">📋</span> Copy kết quả
+                </button>
+            </div>
+        </section>
 
-        <!-- Hiệu ứng Loading khi chờ AI phản hồi -->
-        <div id="loading-ai" style="display: none;">
-            <p>Đang kết nối với chuyên gia Lenormand, vui lòng đợi...</p>
-        </div>
+        <!-- Lưới hiển thị 5 lá bài -->
+        <section class="cards-section">
+            <div class="cards-grid" id="cards-container">
+                <!-- 5 lá bài được tạo tự động từ script.js -->
+            </div>
+        </section>
 
-        <!-- Nơi chứa nội dung giải nghĩa chính thức -->
-        <div id="interpretation-content"></div>
-    </div>
+        <!-- Khu vực hiển thị kết quả luận giải AI -->
+        <section id="interpretation-section" class="result-box" style="display: none;">
+            <div class="result-header">
+                <span class="result-badge">✦ LUẬN GIẢI CHUYÊN SÂU TỪ AI ✦</span>
+                <h3>Thông Điệp Dành Cho Bạn</h3>
+            </div>
 
-    <!-- Nhúng file JS bên ngoài -->
-    <script src="script.js"></script>
+            <!-- Loading AI -->
+            <div id="loading-ai" class="loading-state" style="display: none;">
+                <div class="mystic-spinner">
+                    <div class="spinner-ring"></div>
+                    <span class="spinner-core">✦</span>
+                </div>
+                <p class="loading-title">Đang kết nối năng lượng và đọc liên kết 5 lá bài...</p>
+                <p class="loading-sub">Quá trình luận giải thường mất vài giây, vui lòng giữ yên trang nhé.</p>
+            </div>
+
+            <!-- Nội dung luận giải Markdown -->
+            <div id="interpretation-content" class="markdown-body"></div>
+        </section>
+
+        <footer class="footer">
+            <p>Lenormand 5-Card Spread • Thông điệp mang tính chiêm nghiệm & định hướng</p>
+        </footer>
+    </main>
+
+    <!-- Thư viện Markdown trước, script chính sau -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="script.js"></script>
 </body>
 
 </html>
