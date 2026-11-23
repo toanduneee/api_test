@@ -218,3 +218,46 @@ exports.sendPeriodicStockUpdates = async () => {
         }
     }
 };
+
+exports.logPricesToGoogleSheet = async () => {
+    const GOOGLE_SHEET_API = process.env.GOOGLE_SHEET_API;
+    if (!GOOGLE_SHEET_API) return;
+
+    // Lấy danh sách tất cả mã đang theo dõi (định kỳ + cảnh báo khẩn cấp)
+    const symbolsToLog = [...new Set([...subscribedSymbols, ...priceAlerts.map(a => a.symbol)])];
+    if (symbolsToLog.length === 0) return;
+
+    // Lấy thời gian chuẩn Việt Nam: "YYYY-MM-DD HH:mm:ss"
+    const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const records = [];
+
+    for (const sym of symbolsToLog) {
+        const data = latestStockData[sym] || await getCafefNewPrice(sym);
+        if (!data) continue;
+
+        records.push({
+            timestamp,
+            symbol: data.symbol,
+            price: data.price,
+            change: data.change,
+            percent: data.percent,
+            netVal: data.netVal
+        });
+    }
+
+    if (records.length === 0) return;
+
+    try {
+        await axios.post(
+            GOOGLE_SHEET_API,
+            {
+                action: 'log_stock',
+                records
+            },
+            { timeout: 15000 }
+        );
+        console.log(`[Stock Sheet] Đã ghi ${records.length} mã lên Google Sheet lúc ${timestamp}`);
+    } catch (err) {
+        console.error('[Stock Sheet] Lỗi ghi Google Sheet:', err.message);
+    }
+};

@@ -39,6 +39,10 @@ cron.schedule('*/1 9-11 * * 1-5', async () => {
     
     // Bước 1: Quét ngầm tất cả các mã đang lưu trên RAM
     await stockController.fetchAllSubscribedPrices();
+
+    if (currentMinute % 5 === 0) {
+        await stockController.logPricesToGoogleSheet();
+    }
     
     // Bước 2: Tự động gửi báo cáo định kỳ mỗi 10 phút đến các chat ID tương ứng
     morningCounter++;
@@ -60,6 +64,10 @@ cron.schedule('*/1 13-15 * * 1-5', async () => {
     
     // Bước 1: Quét ngầm tất cả các mã đang lưu trên RAM
     await stockController.fetchAllSubscribedPrices();
+
+    if (currentMinute % 5 === 0) {
+        await stockController.logPricesToGoogleSheet();
+    }
     
     // Bước 2: Tự động gửi báo cáo định kỳ mỗi 10 phút đến các chat ID tương ứng
     afternoonCounter++;
