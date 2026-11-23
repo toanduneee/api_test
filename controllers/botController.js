@@ -1,3 +1,4 @@
+const https = require('https');
 const { Telegraf } = require('telegraf');
 const videoController = require('./videoController');
 const stockController = require('./stockController');
@@ -6,8 +7,16 @@ const askController = require('./askController');
 const spxController = require('./spxController');
 const ttsController = require('./ttsController');
 
+const agent = new https.Agent({
+    family: 4,
+    keepAlive: true,
+    keepAliveMsecs: 10000
+});
+
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN, {
+    telegram: { agent }
+});
 
 const EMOJI_LIST = ['👍', '❤️', '😂', '🎉', '👏', '🔥', '😁', '😎', '😍', '🤩', '🥳', '🤯', '🤔', '🤗', '😇', '🤠', '👽', '👻', '💋', '💯'];
 let lastDebugStatus = "No command triggered yet";
@@ -15,24 +24,30 @@ let lastDebugStatus = "No command triggered yet";
 // Trong controllers/botController.js
 bot.start(async (ctx) => {
   const welcomeMessage = 
-    `🤖 **CHỨC NĂNG CỦA BOT!**\n\n` +
-    `Dưới đây là các tính năng hỗ trợ:\n\n` +
-    `🚚 **1. Theo dõi SPX Express:**\n` +
-    `  • \`/add [Mã_Đơn] [Tên_Gợi_Nhớ]\` - Thêm đơn theo dõi\n` +
-    `  • \`/check\` - Quét & kiểm tra nhanh toàn bộ đơn\n` +
+    `🤖 **DANH SÁCH TÍNH NĂNG CỦA BOT!**\n\n` +
+    `Dưới đây là các lệnh và công cụ hỗ trợ:\n\n` +
+    `🚚 **1. Theo dõi đơn hàng SPX Express:**\n` +
+    `  • \`/add [Mã_Đơn] [Tên_Gợi_Nhớ]\` - Thêm đơn theo dõi (VD: \`/add SPXVN069064486237 Áo sơ mi\`)\n` +
+    `  • \`/check\` - Quét và kiểm tra nhanh toàn bộ đơn\n` +
     `  • \`/list\` - Xem danh sách đơn đang theo dõi\n\n` +
     `📈 **2. Tra cứu & Báo giá cổ phiếu:**\n` +
-    `  • \`/stock [Mã_CP]\` - Tra cứu & tự động bật thông báo định kỳ (VD: \`/stock TCB\`)\n` +
-    `  • \`/stock [Mã_CP] [Giá_Min]-[Giá_Max]\` - Đặt cảnh báo giá khẩn cấp\n` +
-    `  • \`/stockcancel\` - Hủy nhận thông báo cổ phiếu tại chat này\n\n` +
-    `🤖 **3. Trợ lý AI (Groq):**\n` +
+    `  • \`/stock [Mã_CP]\` - Xem giá ngay & bật nhận thông báo định kỳ 10 phút (VD: \`/stock TCB\`)\n` +
+    `  • \`/stock [Mã_CP] [Giá_Min]-[Giá_Max]\` - Đặt cảnh báo giá khẩn cấp (VD: \`/stock TCB 28.5-29.0\`)\n` +
+    `  • \`/stockcancel\` - Hủy theo dõi và dừng nhận thông báo cổ phiếu tại chat này\n\n` +
+    `🗣 **3. Chuyển văn bản thành giọng nói (TTS 1.25x):**\n` +
+    `  • \`/tts [Văn_bản]\` - Đọc bằng giọng AI tự nhiên (Microsoft Neural Voice)\n` +
+    `  • \`/tts1 [Văn_bản]\` - Đọc bằng giọng chuẩn Google (Hỗ trợ văn bản dài)\n` +
+    `  _(Mẹo: Có thể reply tin nhắn bất kỳ rồi gõ \`/tts\` hoặc \`/tts1\` để đọc)_\n\n` +
+    `🤖 **4. Trợ lý AI (Groq):**\n` +
     `  • \`/ask [Câu_hỏi]\` - Hỏi đáp thông minh với AI\n\n` +
-    `🎥 **4. Tiện ích Video & Âm thanh:**\n` +
-    `  • Gửi **Link TikTok** -> Tải Video không logo\n` +
-    `  • Gửi **Video / Video Note** -> Trích xuất file MP3\n\n` +
-    `🔍 **5. Tiện ích khác:**\n` +
-    `  • \`/getid\` - Lấy ID Chat / User / Topic\n\n` +
-    `*Gõ lệnh hoặc thao tác ngay bên dưới nhé!*`;
+    `🎥 **5. Tiện ích Video & Âm thanh:**\n` +
+    `  • Gửi **Link TikTok** vào chat ➔ Tự động tải Video không logo!\n` +
+    `  • Gửi **Video / Video Note** vào chat ➔ Tự động trích xuất file MP3!\n\n` +
+    `🔍 **6. Tiện ích khác:**\n` +
+    `  • \`/getid\` - Lấy ID Chat / User / Topic hiện tại\n` +
+    `  • \`/hello [Tên]\` - Nhắc nhở thành viên\n\n` +
+    `━━━━━━━━━━━━━━━━━━━\n` +
+    `*👉 Gõ lệnh hoặc gửi nội dung trực tiếp để bắt đầu nhé!*`;
 
   await ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
 });
@@ -232,13 +247,10 @@ bot.on('message', async (ctx) => {
     }
 });
 
-exports.handleTelegramWebhook = async (req, res) => {
-    try {
-        lastDebugStatus = "No command triggered yet";
-        await bot.handleUpdate(req.body);
-        return res.status(200).json({ status: 'ok', debug: lastDebugStatus });
-    } catch (error) {
+exports.handleTelegramWebhook = (req, res) => {
+    res.status(200).json({ status: 'ok' });
+
+    bot.handleUpdate(req.body).catch((error) => {
         console.error('Webhook error:', error);
-        return res.status(500).json({ error: error.message });
-    }
+    });
 };
