@@ -2,9 +2,8 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const Groq = require('groq-sdk');
 
-// Dùng chung API Key đang chạy ổn ở askController (dự phòng thêm GROQ_API_KEY)
 const groq = new Groq({
-    apiKey: process.env.GROQ_TEST || process.env.GROQ_API_KEY,
+    apiKey: process.env.GROQ_API_KEY,
 });
 
 const SYSTEM_PROMPT = `Bạn là một chuyên gia giải nghĩa bài Lenormand.
