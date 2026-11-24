@@ -169,7 +169,7 @@ function drawFiveCards() {
     });
 
     // Hiển thị các nút hành động sau khi bốc
-    // document.getElementById("btn-interpret").style.display = "inline-flex";
+    document.getElementById("btn-interpret").style.display = "inline-flex";
     document.getElementById("copy-btn").style.display = "inline-flex";
 }
 

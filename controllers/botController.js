@@ -18,7 +18,7 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN, {
     telegram: { agent }
 });
 
-const EMOJI_LIST = ['👍', '❤️', '😂', '🎉', '👏', '🔥', '😁', '😎', '😍', '🤩', '🥳', '🤯', '🤔', '🤗', '😇', '🤠', '👽', '👻', '💋', '💯'];
+const EMOJI_LIST = ['👍', '❤', '🤣', '🎉', '👏', '🔥', '😁', '😎', '😍', '🤩', '🫡', '🤯', '🤔', '🤗', '😇', '🗿', '👾', '👻', '💋', '💯'];
 let lastDebugStatus = "No command triggered yet";
 
 // Trong controllers/botController.js

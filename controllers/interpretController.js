@@ -1,9 +1,10 @@
-require('dotenv').config();
-const OpenAI = require('openai');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const Groq = require('groq-sdk');
 
-const client = new OpenAI({
-    apiKey: process.env.GROQ_API_KEY,
-    baseURL: "https://api.groq.com/openai/v1",
+// Dùng chung API Key đang chạy ổn ở askController (dự phòng thêm GROQ_API_KEY)
+const groq = new Groq({
+    apiKey: process.env.GROQ_TEST || process.env.GROQ_API_KEY,
 });
 
 const SYSTEM_PROMPT = `Bạn là một chuyên gia giải nghĩa bài Lenormand.
@@ -54,23 +55,43 @@ exports.interpretCards = async (req, res) => {
     try {
         const { data } = req.body; // Dữ liệu trải bài từ Frontend gửi lên
 
-        const response = await client.chat.completions.create({
-            model: "openai/gpt-oss-120b", 
+        if (!data || !data.cards || data.cards.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: "Thiếu dữ liệu trải bài để luận giải."
+            });
+        }
+
+        const chatCompletion = await groq.chat.completions.create({
+            model: "openai/gpt-oss-120b",
             messages: [
                 { role: "system", content: SYSTEM_PROMPT },
                 { role: "user", content: JSON.stringify(data) }
-            ]
+            ],
+            temperature: 0.8,
+            max_completion_tokens: 4096,
+            top_p: 1,
+            reasoning_effort: "low" // Phản hồi nhanh trên web, tránh đợi lâu
         });
 
-        return res.json({ 
-            success: true, 
-            output_text: response.choices[0].message.content 
+        const outputText = chatCompletion.choices[0]?.message?.content;
+
+        if (!outputText) {
+            return res.status(500).json({
+                success: false,
+                error: "AI không trả về nội dung luận giải. Vui lòng thử lại."
+            });
+        }
+
+        return res.json({
+            success: true,
+            output_text: outputText
         });
     } catch (error) {
-        console.error("Lỗi Groq API:", error);
-        return res.status(500).json({ 
-            success: false, 
-            error: "Đã xảy ra lỗi trong quá trình giải bài." 
+        console.error("Lỗi Groq API tại interpretController:", error.status, error.message);
+        return res.status(500).json({
+            success: false,
+            error: "Đã xảy ra lỗi trong quá trình giải bài: " + (error.message || "Lỗi không xác định")
         });
     }
 };
