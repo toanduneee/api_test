@@ -736,14 +736,24 @@ document.getElementById("restartBtn").addEventListener("click", startSession);
 // Gõ bàn phím trực tiếp
 document.addEventListener("keydown", (e) => {
   if (document.getElementById("vocabModal").classList.contains("open")) return;
+  if (summaryCard.classList.contains("show")) return;
   if (!currentWordObj) return;
+
+  if (e.code === "ShiftLeft" && !e.repeat) {
+    e.preventDefault();
+    speakWord(currentWordObj.word);
+    return;
+  }
 
   if (isSolved) {
     if (e.key === "Enter") nextQuestion();
     return;
   }
 
-  if (e.key === "ArrowLeft") {
+  if (e.key === "Tab") {
+    e.preventDefault();
+    useHint();
+  } else if (e.key === "ArrowLeft") {
     e.preventDefault();
     activeSlot = Math.max(0, activeSlot - 1);
     renderBoard();
