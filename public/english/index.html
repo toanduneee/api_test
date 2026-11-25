@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Xáo trộn từ - TOEIC 600 từ vựng</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <button class="icon-btn" id="menuBtn" title="Nạp & quản lý bộ từ vựng">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="app-title">Xáo trộn từ · TOEIC</div>
+      </div>
+
+      <select class="mode-select" id="modeSelect" title="Chọn chủ đề luyện tập">
+        <option value="all-20" selected>Tất cả chủ đề · 20 câu</option>
+        <option value="all-10">Luyện nhanh · 10 câu</option>
+      </select>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <div id="gameArea">
+      <div class="status-row">
+        <div class="status-text">
+          Câu <strong id="currentNum">1</strong> / <strong id="totalNum">20</strong>
+          &nbsp;·&nbsp; Tự giải: <span id="selfSolvedNum">0</span>
+        </div>
+        <span class="level-badge" id="levelBadge" style="display:none;"></span>
+      </div>
+
+      <!-- Question Card -->
+      <div class="card">
+        <div class="card-top">
+          <span class="pos-badge topic-badge" id="topicBadge">Đang tải chủ đề...</span>
+          <button class="audio-btn" id="audioBtn">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+            Nghe phát âm
+          </button>
+        </div>
+
+        <div class="meaning-box">
+          <div class="meaning-text" id="meaningText">Đang nạp từ vựng TOEIC...</div>
+          <div class="sub-meaning" id="subMeaning"></div>
+        </div>
+
+        <div class="slots-container" id="slotsContainer"></div>
+
+        <div class="slots-hint" id="slotsHint">0 / 0 ký tự · Chạm ô đã điền để trả lại</div>
+
+        <div class="feedback-bar" id="feedbackBar">
+          <span class="feedback-word" id="feedbackText">Chính xác!</span>
+          <button class="next-btn" id="nextBtn">Câu tiếp theo →</button>
+        </div>
+      </div>
+
+      <!-- Tiles & Controls Card -->
+      <div class="card">
+        <div class="controls-row">
+          <button class="ctrl-btn hint-btn" id="hintBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            Gợi ý (<span id="hintsLeft">2</span>)
+          </button>
+
+          <div class="btn-group">
+            <button class="ctrl-btn" id="shuffleBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+              Trộn
+            </button>
+            <button class="ctrl-btn" id="deleteBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+                <line x1="18" y1="9" x2="12" y2="15"></line>
+                <line x1="12" y1="9" x2="18" y2="15"></line>
+              </svg>
+              Xóa
+            </button>
+            <button class="ctrl-btn" id="clearBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              Xóa hết
+            </button>
+          </div>
+        </div>
+
+        <div class="tiles-container" id="tilesContainer"></div>
+
+        <div class="kb-legend">
+          <div>Gõ trực tiếp: <span class="kbd">A-Z</span> nhập chữ · <span class="kbd">Backspace</span> xóa</div>
+          <div><span class="kbd">←</span> <span class="kbd">→</span> chuyển ô</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="card summary-card" id="summaryCard">
+      <div class="summary-title">Hoàn thành bài luyện tập!</div>
+      <p style="color: var(--text-secondary);">Bạn đã hoàn thành toàn bộ các từ vựng trong phiên này.</p>
+      <div class="summary-stats">
+        <div class="stat-box">
+          <div class="stat-num" id="sumTotal">20</div>
+          <div class="stat-label">Tổng số câu</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="sumSelf" style="color: #34d399;">18</div>
+          <div class="stat-label">Tự giải không gợi ý</div>
+        </div>
+      </div>
+      <button class="primary-btn" id="restartBtn">Luyện tập lại</button>
+    </div>
+  </main>
+
+  <!-- Modal Nạp & Quản lý từ vựng -->
+  <div class="modal-overlay" id="vocabModal">
+    <div class="modal">
+      <div class="modal-header">
+        <strong>Kho từ vựng hiện có: <span id="vocabCount">0</span> từ</strong>
+        <button class="icon-btn" id="closeModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Nạp từ file TOEIC CSV mặc định hoặc file ngoài -->
+        <div class="import-box">
+          <h4>Bộ từ vựng TOEIC 600 từ (theo Topic)</h4>
+          <p>
+            Đã nạp sẵn từ file <code>toeic_600_words.csv</code> (cột <code>english</code>, <code>vietnamese</code> và phân loại theo <code>topic</code>). Bạn cũng có thể nhập file <code>.csv</code> / <code>.json</code> khác.
+          </p>
+          <div class="import-actions">
+            <button class="primary-btn" id="reloadToeicBtn">↺ Tải lại TOEIC 600 từ (CSV)</button>
+            <label class="ctrl-btn" style="cursor:pointer;">
+              📁 Nhập file CSV / JSON
+              <input type="file" id="fileImportInput" accept=".json,.csv,.txt" style="display:none;" />
+            </label>
+            <button class="ctrl-btn" id="fetchOxfordBtn">⬇ Tải Oxford 3.357 từ</button>
+          </div>
+          <div class="import-status" id="importStatus"></div>
+        </div>
+
+        <div class="section-label">Thêm từng từ thủ công</div>
+        <div class="form-grid">
+          <input type="text" id="newWord" class="input-field" placeholder="Từ tiếng Anh (VD: contract)" />
+          <input type="text" id="newMeaning" class="input-field" placeholder="Nghĩa tiếng Việt (VD: hợp đồng)" />
+          <input type="text" id="newTopic" class="input-field full-span" list="topicDatalist" placeholder="Chủ đề / Topic (VD: Contracts)" />
+          <datalist id="topicDatalist"></datalist>
+        </div>
+        <button class="ctrl-btn" id="addWordBtn" style="width: 100%; justify-content: center;">+ Thêm từ vào kho</button>
+
+        <div class="section-label">Tra cứu danh sách từ trong kho</div>
+        <div class="vocab-filter-row">
+          <select id="modalTopicFilter" class="input-field">
+            <option value="">Tất cả chủ đề</option>
+          </select>
+          <input type="text" id="searchVocabInput" class="input-field" placeholder="Tìm từ tiếng Anh hoặc nghĩa..." />
+        </div>
+        <div class="vocab-list" id="vocabList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
